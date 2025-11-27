@@ -1,57 +1,92 @@
 import Link from "next/link";
+import Image from "next/image";
+import { Instagram, MapPin, Mail, Clock, ExternalLink } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="border-t">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
-          <div className="col-span-2 lg:col-span-1">
-            <div className="flex items-center gap-2 mb-4 font-bold">
-              <span className="inline-block size-5 rounded-sm bg-primary" />
-              <span>Tienda Nube</span>
+    <footer className="border-t bg-background pt-12 pb-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        
+        {/* GRID: 3 Columnas distribuidas equitativamente */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+          
+          {/* COLUMNA 1: LOGO + INSTAGRAM */}
+          <div className="flex flex-col items-start gap-6">
+            {/* Logo */}
+            <div className="relative h-10 w-40">
+               <Image 
+                  src="/PORTO - 2.PNG" 
+                  alt="PortoStore" 
+                  fill 
+                  className="object-contain object-left" 
+               />
             </div>
-            <p className="text-sm text-muted-foreground">La mejor moda, entregada en tu puerta.</p>
+            
+            {/* Botón Instagram (Más visible para compensar falta de texto) */}
+            <Link 
+              href="https://www.instagram.com/portostoreok/" 
+              target="_blank" 
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50 hover:bg-primary hover:text-primary-foreground transition-all text-sm font-medium group"
+            >
+              <Instagram className="size-4 group-hover:scale-110 transition-transform" />
+              <span>Seguinos en Instagram</span>
+            </Link>
           </div>
-          <div>
-            <h3 className="font-semibold mb-4">Comprar</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link className="hover:text-primary" href="#">Novedades</Link></li>
-              <li><Link className="hover:text-primary" href="#">Hombre</Link></li>
-              <li><Link className="hover:text-primary" href="#">Mujer</Link></li>
-              <li><Link className="hover:text-primary" href="#">Rebajas</Link></li>
+
+          {/* COLUMNA 2: AYUDA (Centrada visualmente) */}
+          <div className="md:pl-12"> {/* Un poco de padding para empujarlo al centro visual exacto */}
+            <h3 className="font-semibold text-foreground mb-4 text-base">Ayuda</h3>
+            <ul className="space-y-3 text-sm text-muted-foreground">
+              <li><Link className="hover:text-primary transition-colors block w-fit" href="/contact">Contacto</Link></li>
+              <li><Link className="hover:text-primary transition-colors block w-fit" href="/returns">Politica de Devolución</Link></li>
+              <li><Link className="hover:text-primary transition-colors block w-fit" href="/faq">Preguntas Frecuentes</Link></li>
+              <li><Link className="hover:text-primary transition-colors block w-fit" href="/terms">Términos y Condiciones</Link></li>
             </ul>
           </div>
-          <div>
-            <h3 className="font-semibold mb-4">Empresa</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link className="hover:text-primary" href="#">Sobre Nosotros</Link></li>
-              <li><Link className="hover:text-primary" href="#">Contacto</Link></li>
-              <li><Link className="hover:text-primary" href="#">Carreras</Link></li>
-            </ul>
+
+          {/* COLUMNA 3: TARJETA DE VISITA (Mantiene el peso visual a la derecha) */}
+          <div className="bg-secondary/20 p-6 rounded-xl border border-border/40 space-y-5">
+            <div>
+              <h3 className="font-semibold flex items-center gap-2 text-base mb-2">
+                <MapPin className="size-4 text-primary" /> Visítanos
+              </h3>
+              <div className="text-sm text-muted-foreground pl-6">
+                <p>Entre Ríos 1420</p>
+                <p>Posadas, Misiones</p>
+              </div>
+            </div>
+
+            <div>
+               <h3 className="font-semibold flex items-center gap-2 text-base mb-2">
+                <Clock className="size-4 text-primary" /> Horarios
+              </h3>
+              <div className="text-sm text-muted-foreground pl-6">
+                <p>Lunes a Sábado</p>
+                <p className="font-medium text-primary">10:00 a 21:00 hs (De corrido)</p>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-border/40">
+               <a href="mailto:info@portostore.com" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mt-2">
+                 <Mail className="size-4" /> info@portostore.com
+               </a>
+            </div>
           </div>
-          <div>
-            <h3 className="font-semibold mb-4">Ayuda</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link className="hover:text-primary" href="#">FAQs</Link></li>
-              <li><Link className="hover:text-primary" href="#">Envíos</Link></li>
-              <li><Link className="hover:text-primary" href="#">Devoluciones</Link></li>
-            </ul>
-          </div>
-          <div className="col-span-2 md:col-span-4 lg:col-span-1">
-            <h3 className="font-semibold mb-4">Suscríbete</h3>
-            <p className="text-sm text-muted-foreground mb-3">Recibe ofertas exclusivas y noticias.</p>
-            <form className="flex w-full">
-              <input suppressHydrationWarning className="flex-grow min-w-0 rounded-l-md border bg-background px-3 py-2" placeholder="Tu correo" type="email" name="email" autoComplete="email" />
-              <button className="px-4 py-2 bg-primary text-primary-foreground rounded-r-md font-semibold" type="submit">Enviar</button>
-            </form>
-          </div>
+        
         </div>
-        <div className="mt-12 pt-8 border-t flex flex-col sm:flex-row justify-between items-center text-sm text-muted-foreground">
-          <p>© 2025 Tienda Nube. Todos los derechos reservados.</p>
-          <div className="flex gap-4 mt-4 sm:mt-0">
-            <Link aria-label="Facebook" href="#">FB</Link>
-            <Link aria-label="Instagram" href="#">IG</Link>
-            <Link aria-label="Twitter" href="#">TW</Link>
+
+        {/* CREDITOS */}
+        <div className="mt-12 pt-8 border-t flex flex-col md:flex-row justify-between items-center text-xs text-muted-foreground gap-4">
+          <p>© {new Date().getFullYear()} PortoStore. Todos los derechos reservados.</p>
+          <div className="flex items-center gap-1">
+            <span>Desarrollado por</span>
+            <Link 
+              href="https://soft3ch.com" 
+              className="font-bold text-primary hover:underline flex items-center gap-1"
+              target="_blank"
+            >
+              Soft3ch <ExternalLink className="size-3" />
+            </Link>
           </div>
         </div>
       </div>
