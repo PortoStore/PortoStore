@@ -36,9 +36,10 @@ export default function NewCategoryPage() {
 
             router.push('/admin/categories');
             router.refresh();
-        } catch (e: any) {
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
             console.error(e);
-            setError(e.message || "No se pudo crear la categoría");
+            setError(msg || "No se pudo crear la categoría");
         } finally {
             setLoading(false);
         }

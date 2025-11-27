@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 type Category = { category_id: number; name: string };
 type Unit = { measurement_unit_id: number; name: string };
 type Size = { size_id: number; name: string };
-type PaymentType = { payment_type_id: number; name: string };
+// type PaymentType = { payment_type_id: number; name: string };
 type Product = { product_id: number; name: string; description: string | null; sku_base: string | null; category_id: number | null; measurement_unit_id: number | null };
 
 export default function EditProductPage() {
@@ -24,8 +24,14 @@ export default function EditProductPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
-  const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
-  const [sizes, setSizes] = useState<Size[]>([]);
+  const FIXED_PAYMENTS: { payment_type_id: number; name: string }[] = [
+    { payment_type_id: 1, name: "Efectivo" },
+    { payment_type_id: 2, name: "Tarjeta de Crédito" },
+    { payment_type_id: 3, name: "Transferencia" },
+  ];
+  const [selectedPaymentIds, setSelectedPaymentIds] = useState<number[]>([]);
+  const [paymentPrices, setPaymentPrices] = useState<Record<number, number>>({});
+  // const [sizes, setSizes] = useState<Size[]>([]);
 
   const [name, setName] = useState("");
   const [skuBase, setSkuBase] = useState("");
@@ -35,33 +41,41 @@ export default function EditProductPage() {
 
   const [selectedSizeIds, setSelectedSizeIds] = useState<number[]>([]);
   const [sizeStock, setSizeStock] = useState<Record<number, number>>({});
-  const fixedSizeNames = ["XS", "S", "M", "L", "XL", "XXL", "Sin talle"];
-  const [price, setPrice] = useState<number>(0);
-  const [discount, setDiscount] = useState<number>(0);
+  const FIXED_SIZES: { size_id: number; name: string }[] = [
+    { size_id: 1, name: "Único" },
+    { size_id: 2, name: "XS" },
+    { size_id: 3, name: "S" },
+    { size_id: 4, name: "M" },
+    { size_id: 5, name: "L" },
+    { size_id: 6, name: "XL" },
+    { size_id: 7, name: "XXL" },
+    { size_id: 8, name: "Sin talle" },
+  ];
+  // const [price, setPrice] = useState<number>(0);
+  // const [discount, setDiscount] = useState<number>(0);
 
   useEffect(() => {
     const id = Number(params?.id);
     if (!id) return;
     (async () => {
-      const [prod, cats, ms, pts, sz] = await Promise.all([
+      const [prod, cats, ms] = await Promise.all([
         supabase.from("products").select("product_id,name,description,sku_base,category_id,measurement_unit_id").eq("product_id", id).single(),
         supabase.from("categories").select("category_id,name"),
         supabase.from("measurement_units").select("measurement_unit_id,name"),
-        supabase.from("payment_types").select("payment_type_id,name"),
-        supabase.from("sizes").select("size_id,name"),
       ]);
       if (cats.data) setCategories(cats.data);
       if (ms.data) setUnits(ms.data);
-      if (pts.data) setPaymentTypes(pts.data);
-      if (sz.data) {
-        let current = sz.data as Size[];
-        const missing = fixedSizeNames.filter(n => !current.find((s) => String(s.name).toLowerCase() === n.toLowerCase()));
-        if (missing.length > 0) {
-          const { data: created } = await supabase.from('sizes').insert(missing.map(n => ({ name: n }))).select('*');
-          if (created) current = [...current, ...created as any];
-        }
-        setSizes(current);
-      }
+
+      const { data: priceRowsInit } = await supabase
+        .from("product_prices")
+        .select("payment_type_id,price")
+        .eq("product_id", id);
+      const paymentIds = (priceRowsInit || []).map(r => r.payment_type_id as number);
+      setSelectedPaymentIds(paymentIds);
+      const priceDict: Record<number, number> = {};
+      (priceRowsInit || []).forEach(r => { priceDict[r.payment_type_id as number] = Number(r.price) || 0; });
+      setPaymentPrices(priceDict);
+
       if (prod.data) {
         const p = prod.data as Product;
         setProduct(p);
@@ -70,17 +84,18 @@ export default function EditProductPage() {
         setDescription(p.description || "");
         setCategoryId(p.category_id ?? null);
         setUnitId(p.measurement_unit_id ?? null);
-        const { data: priceRows } = await supabase.from("product_prices").select("price,payment_type_id").eq("product_id", id).limit(1);
-        if (priceRows && priceRows[0]) setPrice(Number(priceRows[0].price) || 0);
-        const { data: sizeRows } = await supabase.from("product_sizes").select("size_id,stock").eq("product_id", id);
+
+        const { data: sizeRows } = await supabase
+          .from("product_sizes")
+          .select("size_id,stock")
+          .eq("product_id", id);
         if (sizeRows && sizeRows.length > 0) {
           const ids = sizeRows.map(r => r.size_id as number);
           setSelectedSizeIds(ids);
           const dict: Record<number, number> = {};
           sizeRows.forEach(r => { dict[r.size_id as number] = Number(r.stock) || 0; });
           setSizeStock(dict);
-          
-      }
+        }
       }
     })();
   }, [params]);
@@ -97,28 +112,19 @@ export default function EditProductPage() {
         .eq("product_id", product.product_id);
       if (upProductError) throw upProductError;
 
-      const finalPrice = price > 0 ? price * (1 - Math.min(Math.max(discount, 0), 100) / 100) : 0;
-      if (paymentTypes.length > 0 && finalPrice > 0) {
-        const ptId = paymentTypes[0].payment_type_id;
-        const { data: existing } = await supabase
-          .from("product_prices")
-          .select("product_id")
-          .eq("product_id", product.product_id)
-          .eq("payment_type_id", ptId)
-          .limit(1);
-        if (existing && existing.length > 0) {
-          const { error: upPriceError } = await supabase
-            .from("product_prices")
-            .update({ price: finalPrice })
-            .eq("product_id", product.product_id)
-            .eq("payment_type_id", ptId);
-          if (upPriceError) throw upPriceError;
-        } else {
-          const { error: insPriceError } = await supabase
-            .from("product_prices")
-            .insert([{ product_id: product.product_id, payment_type_id: ptId, price: finalPrice }]);
-          if (insPriceError) throw insPriceError;
-        }
+      // Replace all product_prices for this product by selected payments
+      const { error: delPricesError } = await supabase
+        .from("product_prices")
+        .delete()
+        .eq("product_id", product.product_id);
+      if (delPricesError) throw delPricesError;
+      const priceRows = FIXED_PAYMENTS
+        .filter(p => selectedPaymentIds.includes(p.payment_type_id))
+        .map(p => ({ product_id: product.product_id, payment_type_id: p.payment_type_id, price: Number(paymentPrices[p.payment_type_id] || 0) }))
+        .filter(r => r.price > 0);
+      if (priceRows.length > 0) {
+        const { error: insPriceError } = await supabase.from("product_prices").insert(priceRows);
+        if (insPriceError) throw insPriceError;
       }
 
       const { error: delSizesError } = await supabase
@@ -199,17 +205,28 @@ export default function EditProductPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Precio y descuento</CardTitle>
-            <CardDescription>Definí el precio y un descuento opcional.</CardDescription>
+            <CardTitle>Precios por tipo de pago</CardTitle>
+            <CardDescription>Seleccioná los tipos y cargá el precio para cada uno.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="price">Precio</Label>
-              <Input id="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(Number(e.target.value || 0))} />
+          <CardContent className="grid gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {FIXED_PAYMENTS.map(pt => {
+                const checked = selectedPaymentIds.includes(pt.payment_type_id);
+                return (
+                  <label key={pt.payment_type_id} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={checked} onChange={() => setSelectedPaymentIds(prev => checked ? prev.filter(x => x !== pt.payment_type_id) : [...prev, pt.payment_type_id])} />
+                    <span>{pt.name}</span>
+                  </label>
+                );
+              })}
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="discount">Descuento (%)</Label>
-              <Input id="discount" type="number" step="1" min="0" max="100" value={discount} onChange={(e) => setDiscount(Number(e.target.value || 0))} />
+            <div className="grid gap-4">
+              {FIXED_PAYMENTS.filter(pt => selectedPaymentIds.includes(pt.payment_type_id)).map(pt => (
+                <div key={pt.payment_type_id} className="grid grid-cols-3 items-center gap-4">
+                  <Label className="col-span-1">{pt.name}</Label>
+                  <Input type="number" step="0.01" value={paymentPrices[pt.payment_type_id] || 0} onChange={(e) => setPaymentPrices(prev => ({ ...prev, [pt.payment_type_id]: Number(e.target.value || 0) }))} className="col-span-2" />
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -221,39 +238,20 @@ export default function EditProductPage() {
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {fixedSizeNames.map(label => {
-                const size = sizes.find(s => String(s.name).toLowerCase() === label.toLowerCase());
-                const id = size?.size_id as number | undefined;
-                const checked = id ? selectedSizeIds.includes(id) : false;
+              {FIXED_SIZES.map(s => {
+                const checked = selectedSizeIds.includes(s.size_id);
                 return (
-                  <label key={label} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={async () => {
-                        let targetId = id;
-                        if (!targetId) {
-                          const { data: created } = await supabase
-                            .from('sizes')
-                            .insert([{ name: label }])
-                            .select('*')
-                            .single();
-                          if (created) {
-                            targetId = (created as any).size_id as number;
-                            setSizes(prev => [...prev, created as any]);
-                          }
-                        }
-                        if (!targetId) return;
-                        setSelectedSizeIds(prev => checked ? prev.filter(x => x !== targetId!) : [...prev, targetId!]);
-                      }}
-                    />
-                    <span>{label}</span>
+                  <label key={s.size_id} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={checked} onChange={() => {
+                      setSelectedSizeIds(prev => checked ? prev.filter(x => x !== s.size_id) : [...prev, s.size_id]);
+                    }} />
+                    <span>{s.name}</span>
                   </label>
                 );
               })}
             </div>
             <div className="grid gap-4">
-              {sizes.filter(s => selectedSizeIds.includes(s.size_id)).map(size => (
+              {FIXED_SIZES.filter(s => selectedSizeIds.includes(s.size_id)).map(size => (
                 <div key={size.size_id} className="grid grid-cols-3 items-center gap-4">
                   <Label className="col-span-1">{size.name}</Label>
                   <Input type="number" value={sizeStock[size.size_id] || 0} onChange={(e) => {

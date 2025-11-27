@@ -19,18 +19,33 @@ export default function NewProductPage() {
     const [error, setError] = useState<string | null>(null);
 
     // Data for selects
-    const [categories, setCategories] = useState<any[]>([]);
-    const [units, setUnits] = useState<any[]>([]);
-    const [paymentTypes, setPaymentTypes] = useState<any[]>([]);
-    const [sizes, setSizes] = useState<any[]>([]);
+    type Category = { category_id: number; name: string };
+    type Unit = { measurement_unit_id: number; name: string };
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [units, setUnits] = useState<Unit[]>([]);
     const [selectedSizeIds, setSelectedSizeIds] = useState<number[]>([]);
     const [sizeStock, setSizeStock] = useState<Record<number, number>>({});
-    const fixedSizeNames = ["XS", "S", "M", "L", "XL", "XXL", "Sin talle"];
+    const FIXED_SIZES: { size_id: number; name: string }[] = [
+        { size_id: 1, name: "Único" },
+        { size_id: 2, name: "XS" },
+        { size_id: 3, name: "S" },
+        { size_id: 4, name: "M" },
+        { size_id: 5, name: "L" },
+        { size_id: 6, name: "XL" },
+        { size_id: 7, name: "XXL" },
+        { size_id: 8, name: "Sin talle" },
+    ];
+
+    const FIXED_PAYMENTS: { payment_type_id: number; name: string }[] = [
+        { payment_type_id: 1, name: "Efectivo" },
+        { payment_type_id: 2, name: "Tarjeta de Crédito" },
+        { payment_type_id: 3, name: "Transferencia" },
+    ];
+    const [selectedPaymentIds, setSelectedPaymentIds] = useState<number[]>([]);
+    const [paymentPrices, setPaymentPrices] = useState<Record<number, number>>({});
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [previews, setPreviews] = useState<string[]>([]);
     const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
-    const [uploadingImages, setUploadingImages] = useState(false);
-    const [uploadError, setUploadError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     function removeImage(index: number) {
         setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
@@ -47,25 +62,13 @@ export default function NewProductPage() {
 
     useEffect(() => {
         async function fetchData() {
-            const [cats, ms, pts, szs] = await Promise.all([
+            const [cats, ms] = await Promise.all([
                 supabase.from('categories').select('*'),
                 supabase.from('measurement_units').select('*'),
-                supabase.from('payment_types').select('*'),
-                supabase.from('sizes').select('*')
             ]);
 
-            if (cats.data) setCategories(cats.data);
-            if (ms.data) setUnits(ms.data);
-            if (pts.data) setPaymentTypes(pts.data);
-            if (szs.data) {
-                let current = szs.data;
-                const missing = fixedSizeNames.filter(n => !current.find((s: any) => String(s.name).toLowerCase() === n.toLowerCase()));
-                if (missing.length > 0) {
-                    const { data: created } = await supabase.from('sizes').insert(missing.map(n => ({ name: n }))).select('*');
-                    if (created) current = [...current, ...created];
-                }
-                setSizes(current);
-            }
+            if (cats.data) setCategories(cats.data as Category[]);
+            if (ms.data) setUnits(ms.data as Unit[]);
         }
         fetchData();
     }, []);
@@ -112,19 +115,21 @@ export default function NewProductPage() {
                 if (imageError) console.error("Error saving image:", imageError);
             }
 
-            // 3. Insert Precio único con descuento opcional
-            const basePrice = Number(formData.get('price') || 0);
-            const discountPercent = Number(formData.get('discount') || 0);
-            const finalPrice = basePrice > 0 ? basePrice * (1 - Math.min(Math.max(discountPercent, 0), 100) / 100) : 0;
-            if (finalPrice > 0 && paymentTypes.length > 0) {
-                const defaultPaymentTypeId = paymentTypes[0].payment_type_id;
-                const { error: priceError } = await supabase
-                    .from('product_prices')
-                    .insert([{ product_id: productId, payment_type_id: defaultPaymentTypeId, price: finalPrice }]);
+            // 3. Insert precios por tipo de pago
+            const priceRows = FIXED_PAYMENTS
+                .filter(p => selectedPaymentIds.includes(p.payment_type_id))
+                .map(p => ({
+                    product_id: productId,
+                    payment_type_id: p.payment_type_id,
+                    price: Number(paymentPrices[p.payment_type_id] || 0)
+                }))
+                .filter(r => r.price > 0);
+            if (priceRows.length > 0) {
+                const { error: priceError } = await supabase.from('product_prices').insert(priceRows);
                 if (priceError) throw priceError;
             }
 
-            const stockInserts = sizes
+            const stockInserts: { product_id: number; size_id: number; stock: number }[] = FIXED_SIZES
                 .filter(s => selectedSizeIds.includes(s.size_id))
                 .map(size => {
                     const stock = formData.get(`stock_${size.size_id}`);
@@ -133,7 +138,7 @@ export default function NewProductPage() {
                     }
                     return null;
                 })
-                .filter(Boolean) as any[];
+                .filter((x): x is { product_id: number; size_id: number; stock: number } => Boolean(x));
 
             if (stockInserts.length > 0) {
                 const { error: stockError } = await supabase
@@ -144,9 +149,10 @@ export default function NewProductPage() {
 
             router.push('/admin/products');
             router.refresh();
-        } catch (e: any) {
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
             console.error(e);
-            setError(e.message || "No se pudo crear el producto");
+            setError(msg || "No se pudo crear el producto");
         } finally {
             setLoading(false);
         }
@@ -258,8 +264,8 @@ export default function NewProductPage() {
                                         uploadPreset={uploadPreset}
                                         signatureEndpoint="/api/cloudinary-signature"
                                         options={{ multiple: true, cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME, apiKey: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY }}
-                                        onUpload={(result) => {
-                                            const url = (result as any)?.info?.secure_url as string | undefined;
+                                        onUpload={(result: unknown) => {
+                                            const url = (result as { info?: { secure_url?: string } }).info?.secure_url as string | undefined;
                                             if (!url) return;
                                             setUploadedImageUrls((prev) => [...prev, url].slice(0, 3));
                                             setPreviews((prev) => [...prev, url].slice(0, 3));
@@ -273,26 +279,48 @@ export default function NewProductPage() {
                                 )}
                                 <Button type="button" variant="outline" onClick={clearAllImages} disabled={selectedFiles.length === 0 && previews.length === 0 && uploadedImageUrls.length === 0}>Quitar todas</Button>
                             </div>
-                            {uploadError && (
-                                <p className="text-sm text-red-500">{uploadError}</p>
-                            )}
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Precio y descuento</CardTitle>
-                        <CardDescription>Definí el precio y un descuento opcional.</CardDescription>
+                        <CardTitle>Precios por tipo de pago</CardTitle>
+                        <CardDescription>Seleccioná los tipos y cargá el precio para cada uno.</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                        <div className="grid gap-2">
-                            <Label htmlFor="price">Precio</Label>
-                            <Input id="price" name="price" type="number" step="0.01" placeholder="0.00" />
+                    <CardContent className="grid gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {FIXED_PAYMENTS.map(pt => {
+                                const checked = selectedPaymentIds.includes(pt.payment_type_id);
+                                return (
+                                    <label key={pt.payment_type_id} className="flex items-center gap-2 text-sm">
+                                        <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            onChange={() => setSelectedPaymentIds(prev => checked ? prev.filter(x => x !== pt.payment_type_id) : [...prev, pt.payment_type_id])}
+                                        />
+                                        <span>{pt.name}</span>
+                                    </label>
+                                );
+                            })}
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="discount">Descuento (%)</Label>
-                            <Input id="discount" name="discount" type="number" step="1" min="0" max="100" placeholder="0" />
+                        <div className="grid gap-4">
+                            {FIXED_PAYMENTS.filter(pt => selectedPaymentIds.includes(pt.payment_type_id)).map(pt => (
+                                <div key={pt.payment_type_id} className="grid grid-cols-3 items-center gap-4">
+                                    <Label className="col-span-1">{pt.name}</Label>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        name={`price_${pt.payment_type_id}`}
+                                        placeholder="0.00"
+                                        onChange={(e) => {
+                                            const val = Number(e.target.value || 0);
+                                            setPaymentPrices(prev => ({ ...prev, [pt.payment_type_id]: val }));
+                                        }}
+                                        className="col-span-2"
+                                    />
+                                </div>
+                            ))}
                         </div>
                     </CardContent>
                 </Card>
@@ -304,39 +332,24 @@ export default function NewProductPage() {
                     </CardHeader>
                     <CardContent className="grid gap-4">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            {fixedSizeNames.map(label => {
-                                const size = sizes.find(s => String(s.name).toLowerCase() === label.toLowerCase());
-                                const id = size?.size_id as number | undefined;
-                                const checked = id ? selectedSizeIds.includes(id) : false;
+                            {FIXED_SIZES.map(s => {
+                                const checked = selectedSizeIds.includes(s.size_id);
                                 return (
-                                    <label key={label} className="flex items-center gap-2 text-sm">
+                                    <label key={s.size_id} className="flex items-center gap-2 text-sm">
                                         <input
                                             type="checkbox"
                                             checked={checked}
-                                            onChange={async () => {
-                                                let targetId = id;
-                                                if (!targetId) {
-                                                    const { data: created } = await supabase
-                                                        .from('sizes')
-                                                        .insert([{ name: label }])
-                                                        .select('*')
-                                                        .single();
-                                                    if (created) {
-                                                        targetId = (created as any).size_id as number;
-                                                        setSizes(prev => [...prev, created as any]);
-                                                    }
-                                                }
-                                                if (!targetId) return;
-                                                setSelectedSizeIds(prev => checked ? prev.filter(x => x !== targetId!) : [...prev, targetId!]);
+                                            onChange={() => {
+                                                setSelectedSizeIds(prev => checked ? prev.filter(x => x !== s.size_id) : [...prev, s.size_id]);
                                             }}
                                         />
-                                        <span>{label}</span>
+                                        <span>{s.name}</span>
                                     </label>
                                 );
                             })}
                         </div>
                         <div className="grid gap-4">
-                            {sizes.filter(s => selectedSizeIds.includes(s.size_id)).map(size => (
+                            {FIXED_SIZES.filter(s => selectedSizeIds.includes(s.size_id)).map(size => (
                                 <div key={size.size_id} className="grid grid-cols-3 items-center gap-4">
                                     <Label className="col-span-1">{size.name}</Label>
                                     <Input
@@ -351,7 +364,6 @@ export default function NewProductPage() {
                                     />
                                 </div>
                             ))}
-                            {sizes.length === 0 && <p className="text-sm text-muted-foreground">No hay talles definidos.</p>}
                             <div className="text-sm text-muted-foreground">
                                 Cantidad total: {selectedSizeIds.reduce((acc, id) => acc + (sizeStock[id] || 0), 0)}
                             </div>

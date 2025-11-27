@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   if (!cloudinary.config().api_secret || !preset) {
     return new Response(JSON.stringify({ error: "config_missing" }), { status: 400 });
   }
-  let params: Record<string, string | number> = {};
+  const params: Record<string, string | number> = {};
   let body: Record<string, unknown> | null = null;
   try {
     body = await req.json();

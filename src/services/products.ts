@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 
 export interface Product {
+    product_id: number;
     slug: string;
     name: string;
     price: number;
@@ -29,8 +30,10 @@ export async function getFeaturedProducts(): Promise<Product[]> {
         return [];
     }
 
-    return data.map((p: any) => ({
-        slug: p.sku_base || String(p.product_id), // Fallback to ID if no SKU
+    type ProductRow = { product_id: number; name: string; sku_base: string | null; product_prices?: { price: number }[]; images?: { url: string }[] };
+    return data.map((p: ProductRow) => ({
+        product_id: p.product_id,
+        slug: p.sku_base || String(p.product_id),
         name: p.name,
         price: p.product_prices?.[0]?.price || 0,
         image: p.images?.[0]?.url || '',
@@ -72,7 +75,7 @@ export async function getCategories(): Promise<Category[]> {
         'Accesorios': "https://lh3.googleusercontent.com/aida-public/AB6AXuCSO5iVuogDxad87V7DFkHPeraQ31_CMDZCDcpaCUpP5oYZuwpCaCXoKq7KYjyAD9zccNrwCJFZsGJ8S7vu-dd6hRUoXXguH8tGJM4CumRQAke2Je4Gt08gcHJ_jZvUCd0V-FW1A1wXj_j1ZcwT2-67L2mQmd0M1dP3t94zczXSgliAKnC-MZcsIxUaet35AKDDnBvUL9u49hzNOk6Hl4su05urbOC1Tmeyd43FDFWEIsSYJHTPPrV499grptQ-r0wY_6bkdBcBmEje",
     };
 
-    return data.map((c: any) => ({
+    return (data || []).map((c: { name: string }) => ({
         title: c.name,
         image: defaultImages[c.name] || 'https://images.unsplash.com/photo-1557821552-17105176677c?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fHNob3BwaW5nfGVufDB8fDB8fHww',
     }));
@@ -100,7 +103,9 @@ export async function getProductsByCategory(categoryName: string): Promise<Produ
         return [];
     }
 
-    return data.map((p: any) => ({
+    type ProductRow2 = { product_id: number; name: string; sku_base: string | null; product_prices?: { price: number }[]; images?: { url: string }[] };
+    return data.map((p: ProductRow2) => ({
+        product_id: p.product_id,
         slug: p.sku_base || String(p.product_id),
         name: p.name,
         price: p.product_prices?.[0]?.price || 0,
@@ -154,6 +159,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
             return null;
         }
         return {
+            product_id: dataId.product_id,
             slug: dataId.sku_base || String(dataId.product_id),
             name: dataId.name,
             price: dataId.product_prices?.[0]?.price || 0,
@@ -162,6 +168,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     }
 
     return {
+        product_id: data.product_id,
         slug: data.sku_base || String(data.product_id),
         name: data.name,
         price: data.product_prices?.[0]?.price || 0,
