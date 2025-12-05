@@ -26,7 +26,6 @@ export default function NewProductPage() {
     const [selectedSizeIds, setSelectedSizeIds] = useState<number[]>([]);
     const [sizeStock, setSizeStock] = useState<Record<number, number>>({});
     const FIXED_SIZES: { size_id: number; name: string }[] = [
-        { size_id: 1, name: "Único" },
         { size_id: 2, name: "XS" },
         { size_id: 3, name: "S" },
         { size_id: 4, name: "M" },
@@ -37,9 +36,8 @@ export default function NewProductPage() {
     ];
 
     const FIXED_PAYMENTS: { payment_type_id: number; name: string }[] = [
-        { payment_type_id: 1, name: "Efectivo" },
-        { payment_type_id: 2, name: "Tarjeta de Crédito" },
-        { payment_type_id: 3, name: "Transferencia" },
+        { payment_type_id: 1, name: "Efectivo / Transferencia" },
+        { payment_type_id: 2, name: "Tarjeta de Crédito / Débito" },
     ];
     const [selectedPaymentIds, setSelectedPaymentIds] = useState<number[]>([]);
     const [paymentPrices, setPaymentPrices] = useState<Record<number, number>>({});

@@ -73,7 +73,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             {/* <p className="text-xl line-through text-muted-foreground">$75.00</p> */}
           </div>
           <p className="text-muted-foreground">
-            Este producto es un ejemplo migrado a Next.js con shadcn/ui.
             Selecciona opciones y agrega al carrito.
           </p>
           {hasAnySizeStock && (

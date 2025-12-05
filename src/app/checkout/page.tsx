@@ -40,7 +40,7 @@ export default function CheckoutPage() {
               </div>
               <div>
                 <label className="text-sm font-medium mb-1" htmlFor="city">Ciudad</label>
-                <Input id="city" placeholder="Springfield" />
+                <Input id="city" placeholder="Posadas" />
               </div>
               <div>
                 <label className="text-sm font-medium mb-1" htmlFor="postalCode">Código Postal</label>

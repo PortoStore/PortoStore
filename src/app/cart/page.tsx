@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { getCartItems, updateCartItemQty, removeCartItem, clearCart } from "@/lib/utils";
 
 type ProductInfo = { product_id: number; name: string; image: string; priceNow: number };
-const SIZE_NAMES: Record<number, string> = { 1: "Único", 2: "XS", 3: "S", 4: "M", 5: "L", 6: "XL", 7: "XXL", 8: "Sin talle" };
+const SIZE_NAMES: Record<number, string> = {  2: "XS", 3: "S", 4: "M", 5: "L", 6: "XL", 7: "XXL", 8: "Sin talle" };
 
 export default function CartPage() {
   const [items, setItems] = useState(() => getCartItems());

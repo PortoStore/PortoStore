@@ -14,14 +14,11 @@ import { getCategories } from "@/services/products";
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
-  const [isMounted, setIsMounted] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
+  const [cartCount, setCartCount] = useState(() => getCartCount());
 
   const pathname = usePathname();
 
   useEffect(() => {
-    setIsMounted(true);
-    setCartCount(getCartCount());
     const onUpdate = () => setCartCount(getCartCount());
     window.addEventListener("storage", onUpdate);
     window.addEventListener("cart_updated", onUpdate as EventListener);
@@ -57,7 +54,7 @@ export default function Navbar() {
             {/* CAMBIO 3: Control estricto del tamaño del logo. 
                 'h-10 w-auto' asegura que no sea más alto que la barra. 
                 'object-contain' evita que se recorte. */}
-            <div className="relative h-10 w-40"> 
+            <div className="relative h-13 w-43"> 
                 <Image 
                     src="/PORTO - 2.PNG" 
                     alt="PortoStore" 
@@ -110,7 +107,7 @@ export default function Navbar() {
           <Link href="/cart">
             <Button variant="ghost" size="icon" className="relative">
               <ShoppingBag className="size-5" />
-              {isMounted && cartCount > 0 && (
+              {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 size-5 rounded-full bg-primary text-primary-foreground text-[11px] flex items-center justify-center font-bold">
                   {cartCount}
                 </span>

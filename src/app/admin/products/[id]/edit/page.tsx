@@ -42,7 +42,6 @@ export default function EditProductPage() {
   const [selectedSizeIds, setSelectedSizeIds] = useState<number[]>([]);
   const [sizeStock, setSizeStock] = useState<Record<number, number>>({});
   const FIXED_SIZES: { size_id: number; name: string }[] = [
-    { size_id: 1, name: "Único" },
     { size_id: 2, name: "XS" },
     { size_id: 3, name: "S" },
     { size_id: 4, name: "M" },

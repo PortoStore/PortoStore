@@ -11,7 +11,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Tienda Nube",
+  title: "Porto Store",
   description: "Moda y accesorios",
 };
 
