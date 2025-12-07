@@ -128,11 +128,28 @@ export default function Navbar() {
                  <div className="relative h-8 w-32">
                     <Image src="/PORTO - 2.PNG" alt="PortoStore" fill className="object-contain object-left" />
                  </div>
+
               </SheetHeader>
-              <nav className="mt-8 flex flex-col gap-4">
+              <nav className="mt-8 flex flex-col gap-4 px-4">
                   <Link href="/" onClick={() => setOpen(false)} className="font-medium">Inicio</Link>
+                  
+                  <div className="flex flex-col gap-3">
+                    <h4 className="font-medium">Productos</h4>
+                    <div className="flex flex-col gap-2 pl-4 border-l">
+                      {categories.map((name) => (
+                        <Link 
+                          key={name}
+                          href={`/category/${encodeURIComponent(name)}`}
+                          onClick={() => setOpen(false)}
+                          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
                   <Link href="/returns" onClick={() => setOpen(false)} className="font-medium">Políticas de Devolución</Link>
-                   {/* ... resto del menu movil ... */}
               </nav>
             </SheetContent>
           </Sheet>

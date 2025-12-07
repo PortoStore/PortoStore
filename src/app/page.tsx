@@ -37,22 +37,7 @@ export default async function Home() {
       </section>
 
       {/* Banner promocional */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-        <div className="relative overflow-hidden rounded-xl min-h-[300px]">
-          <Image
-  src="/imagenhero.jpg"  // La ruta comienza con / que representa la carpeta public
-  alt="Modelos vistiendo ropa de la nueva colección"
-  fill
-  className="object-cover"
-  priority
-/>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="relative z-10 p-8 text-white">
-            <h3 className="text-4xl font-bold leading-tight mb-2">Rebajas de Fin de Temporada</h3>
-            <p className="text-lg">Hasta 50% de descuento en artículos seleccionados.</p>
-          </div>
-        </div>
-      </section>
+      
 
       {/* Categorías con Productos */}
       {visibleCategories.map((category) => (

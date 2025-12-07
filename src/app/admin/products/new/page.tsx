@@ -150,7 +150,7 @@ export default function NewProductPage() {
             router.refresh();
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
-            console.error(e);
+                
             setError(msg || "No se pudo crear el producto");
         } finally {
             setLoading(false);

@@ -21,7 +21,7 @@ export default function ProductCard({ product }: { product: Product }) {
             variant="secondary"
             asChild
           >
-            <Link href={`/product/${product.slug}`}>Vista Rápida</Link>
+            <Link href={`/product/${product.slug}`}>Ver</Link>
           </Button>
         </div>
         <div className="p-3">
