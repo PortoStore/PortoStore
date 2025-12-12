@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
-import { getCartItems, updateCartItemQty, removeCartItem, clearCart } from "@/lib/utils";
+import { getCartItems, removeCartItem, clearCart } from "@/lib/utils";
 
 type ProductInfo = { product_id: number; name: string; image: string; priceNow: number };
 const SIZE_NAMES: Record<number, string> = {  2: "XS", 3: "S", 4: "M", 5: "L", 6: "XL", 7: "XXL", 8: "Sin talle" };
@@ -45,16 +45,6 @@ export default function CartPage() {
 
   const subtotal = useMemo(() => items.reduce((acc, i) => acc + (Number(i.price_snapshot) || 0) * (Number(i.qty) || 1), 0), [items]);
 
-  function incQty(product_id: number, size_id: number, current: number) {
-    const next = current + 1;
-    updateCartItemQty(product_id, size_id, next);
-    setItems(getCartItems());
-  }
-  function decQty(product_id: number, size_id: number, current: number) {
-    const next = Math.max(1, current - 1);
-    updateCartItemQty(product_id, size_id, next);
-    setItems(getCartItems());
-  }
   function remove(product_id: number, size_id: number) {
     removeCartItem(product_id, size_id);
     setItems(getCartItems());
@@ -92,11 +82,7 @@ export default function CartPage() {
                     </div>
                   </div>
                   <div className="flex flex-1 items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <button className="h-8 w-8 rounded-full border" onClick={() => decQty(ci.product_id, ci.size_id, Number(ci.qty) || 1)}>-</button>
-                      <input className="w-8 text-center bg-transparent" value={ci.qty} readOnly />
-                      <button className="h-8 w-8 rounded-full border" onClick={() => incQty(ci.product_id, ci.size_id, Number(ci.qty) || 1)}>+</button>
-                    </div>
+                    <div className="text-sm text-muted-foreground">Cantidad: {Number(ci.qty) || 1}</div>
                     <p className="font-semibold">${total.toFixed(2)}</p>
                     <button className="text-muted-foreground hover:text-red-500" onClick={() => remove(ci.product_id, ci.size_id)}>Eliminar</button>
                   </div>
