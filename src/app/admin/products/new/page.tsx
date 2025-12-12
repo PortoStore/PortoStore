@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
@@ -15,6 +15,7 @@ import { CldUploadWidget } from "next-cloudinary";
 
 export default function NewProductPage() {
     const router = useRouter();
+    const supabase = createClient();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -212,76 +213,59 @@ export default function NewProductPage() {
                                 </Select>
                             </div>
                         </div>
-                        <div className="grid gap-2">
-                            <Label>Imágenes del Producto (máximo 3)</Label>
-                            <div
-                                className="border border-dashed rounded-md p-6 text-center cursor-pointer select-none"
-                                onClick={() => fileInputRef.current?.click()}
-                                onDragOver={(e) => { e.preventDefault(); }}
-                                onDrop={(e) => {
-                                    e.preventDefault();
-                                    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-                                    const limit = 3 - selectedFiles.length;
-                                    const toAdd = files.slice(0, Math.max(0, limit));
-                                    const nextFiles = [...selectedFiles, ...toAdd];
-                                    setSelectedFiles(nextFiles);
-                                    const nextPreviews = [...previews, ...toAdd.map(f => URL.createObjectURL(f))].slice(0, 3);
-                                    setPreviews(nextPreviews);
-                                }}
-                            >
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    className="hidden"
-                                    ref={fileInputRef}
-                                    onChange={(e) => {
-                                        const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
-                                        const limit = 3 - selectedFiles.length;
-                                        const toAdd = files.slice(0, Math.max(0, limit));
-                                        const nextFiles = [...selectedFiles, ...toAdd];
-                                        setSelectedFiles(nextFiles);
-                                        const nextPreviews = [...previews, ...toAdd.map(f => URL.createObjectURL(f))].slice(0, 3);
-                                        setPreviews(nextPreviews);
-                                    }}
-                                />
-                                <p className="text-sm">Arrastrá y soltá o hacé click para seleccionar</p>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                                {previews.map((src, i) => (
-                                    <div key={i} className="relative h-24 w-full overflow-hidden rounded-md border">
-                                        <Image src={src} alt="Preview" fill className="object-cover" />
-                                        <button type="button" className="absolute top-1 right-1 rounded-xs bg-background/70 border p-1" onClick={() => removeImage(i)}>
-                                            <X className="size-4" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="flex gap-2">
-                                <CldUploadWidget
-                                    uploadPreset={uploadPreset}
-                                    onSuccess={(result) => {
-                                        const info = (result as { info?: { secure_url?: string; url?: string } }).info;
-                                        const url = info?.secure_url || info?.url;
-                                        if (url) {
-                                            setLastUploadUrl(url);
-                                            setUploadedImageUrls(prev => [...prev, url].slice(0, 3));
-                                            setPreviews(prev => [...prev, url].slice(0, 3));
-                                        }
-                                    }}
-                                >
-                                    {({ open }) => {
-                                        return (
-                                            <button type="button" onClick={() => open()}>
-                                                Upload an Image
-                                            </button>
-                                        );
-                                    }}
-                                </CldUploadWidget>
-                                <Button type="button" variant="outline" onClick={clearAllImages} disabled={selectedFiles.length === 0 && previews.length === 0 && uploadedImageUrls.length === 0}>Quitar todas</Button>
-                            </div>
-                          
-                        </div>
+                       <div className="grid gap-2">
+    <Label>Imágenes del Producto (máximo 3)</Label>
+
+    <div className="flex gap-2">
+        <CldUploadWidget
+            uploadPreset={uploadPreset}
+            onSuccess={(result) => {
+                const info = (result as { info?: { secure_url?: string; url?: string } }).info;
+                const url = info?.secure_url || info?.url;
+
+                if (url) {
+                    setLastUploadUrl(url);
+                    setUploadedImageUrls(prev => [...prev, url].slice(0, 3));
+                    setPreviews(prev => [...prev, url].slice(0, 3));
+                }
+            }}
+        >
+            {({ open }) => (
+                <Button type="button" onClick={() => open()}>
+                    Subir imagen
+                </Button>
+            )}
+        </CldUploadWidget>
+
+        <Button
+            type="button"
+            variant="outline"
+            onClick={clearAllImages}
+            disabled={previews.length === 0 && uploadedImageUrls.length === 0}
+        >
+            Quitar todas
+        </Button>
+    </div>
+
+    <div className="grid grid-cols-3 gap-2">
+        {previews.map((src, i) => (
+            <div
+                key={i}
+                className="relative h-24 w-full overflow-hidden rounded-md border"
+            >
+                <Image src={src} alt="Preview" fill className="object-cover" />
+                <button
+                    type="button"
+                    className="absolute top-1 right-1 rounded-xs bg-background/70 border p-1"
+                    onClick={() => removeImage(i)}
+                >
+                    <X className="size-4" />
+                </button>
+            </div>
+        ))}
+    </div>
+</div>
+
                     </CardContent>
                 </Card>
 

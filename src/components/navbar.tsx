@@ -8,15 +8,17 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader } from "@/components/ui/sheet";
 import ThemeToggle from "./theme-toggle";
-import { getCartCount } from "@/lib/utils";
+import { getCartCount, cn } from "@/lib/utils";
 import { getCategories } from "@/services/products";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
   const [cartCount, setCartCount] = useState(() => getCartCount());
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const pathname = usePathname();
+  const isHome = pathname === "/";
 
   useEffect(() => {
     const onUpdate = () => setCartCount(getCartCount());
@@ -39,22 +41,49 @@ export default function Navbar() {
     })();
   }, []);
 
+  useEffect(() => {
+    if (!isHome) {
+      setIsScrolled(true);
+      return;
+    }
+
+    // Try to find the hero element
+    const hero = document.getElementById("home-hero");
+    if (!hero) {
+        setIsScrolled(true);
+        return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // If not intersecting (scrolled past), show navbar
+        setIsScrolled(!entry.isIntersecting);
+      },
+      { threshold: 0 }
+    );
+
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, [isHome, pathname]);
+
   if (pathname?.startsWith("/admin")) return null;
 
   return (
-    // CAMBIO 1: bg-background/60 (más transparente) y backdrop-blur-md para efecto vidrio
-    // Opcional: Si quieres que sea MUY transparente, usa bg-background/40
-    <header className="sticky top-0 z-50 border-b bg-background/60 backdrop-blur-md transition-all">
+    <header 
+      className={cn(
+        "sticky top-0 z-50 border-b bg-background transition-all duration-500",
+        isHome ? "md:fixed md:w-full md:border-b-0" : "",
+        isHome && !isScrolled ? "md:-translate-y-full md:opacity-0" : "md:translate-y-0 md:opacity-100",
+        isHome && isScrolled ? "md:bg-background/80 md:backdrop-blur-md md:border-b md:shadow-sm" : ""
+      )}
+    >
       
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between relative">
         
         {/* Izquierda: Logo */}
         <div className="flex items-center z-20"> 
           <Link href="/" className="flex items-center gap-2 font-bold">
-            {/* CAMBIO 3: Control estricto del tamaño del logo. 
-                'h-10 w-auto' asegura que no sea más alto que la barra. 
-                'object-contain' evita que se recorte. */}
-            <div className="relative h-13 w-43"> 
+            <div className="relative h-12 w-auto min-w-[120px]"> 
                 <Image 
                     src="/PORTO - 2.PNG" 
                     alt="PortoStore" 
@@ -100,9 +129,7 @@ export default function Navbar() {
 
         {/* Derecha: Acciones */}
         <div className="flex items-center gap-2 z-20">
-          <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
-            <User className="size-5" />
-          </Button>
+         
           
           <Link href="/cart">
             <Button variant="ghost" size="icon" className="relative">

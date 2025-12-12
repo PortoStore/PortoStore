@@ -1,19 +1,27 @@
+"use client";
+
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { usePathname } from "next/navigation";
 import {
     LayoutDashboard,
     Package,
     Tags,
     Receipt,
-    Settings,
-    LogOut
+    Store
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function AdminLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const pathname = usePathname();
+
+    if (pathname === "/admin/login") {
+        return <>{children}</>;
+    }
+
     return (
         <div className="flex min-h-screen w-full flex-col bg-muted/40 md:flex-row">
             <aside className="hidden w-64 flex-col border-r bg-background md:flex">
@@ -56,10 +64,12 @@ export default function AdminLayout({
                     </nav>
                 </div>
                 <div className="mt-auto p-4">
-                    <Button variant="outline" className="w-full justify-start gap-2">
-                        <LogOut className="h-4 w-4" />
-                        Salir del Admin
-                    </Button>
+                    <Link href="/" target="_blank">
+                        <Button variant="outline" className="w-full gap-2">
+                            <Store className="h-4 w-4" />
+                            Ir a la tienda
+                        </Button>
+                    </Link>
                 </div>
             </aside>
             <div className="flex flex-col flex-1 sm:gap-4 sm:py-4">

@@ -1,8 +1,14 @@
+"use client";
 import Link from "next/link";
 import Image from "next/image";
-import { Instagram, MapPin, Mail, Clock, ExternalLink } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Instagram, MapPin, Mail, Clock, ExternalLink, Lock } from "lucide-react";
 
 export default function Footer() {
+  const pathname = usePathname();
+
+  if (pathname?.startsWith("/admin")) return null;
+
   return (
     <footer className="border-t bg-background pt-12 pb-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -68,7 +74,7 @@ export default function Footer() {
 
             <div className="pt-2 border-t border-border/40">
                <a href="mailto:info@portostore.com" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mt-2">
-                 <Mail className="size-4" /> info@portostore.com
+                 <Mail className="size-4" /> tiendaportostore@gmail.com
                </a>
             </div>
           </div>
@@ -78,6 +84,13 @@ export default function Footer() {
         {/* CREDITOS */}
         <div className="mt-12 pt-8 border-t flex flex-col md:flex-row justify-between items-center text-xs text-muted-foreground gap-4">
           <p>© {new Date().getFullYear()} PortoStore. Todos los derechos reservados.</p>
+          <Link 
+              href="/admin" 
+              className="opacity-20 hover:opacity-100 transition-opacity p-1"
+              title="Acceso Administrativo"
+            >
+              <Lock className="size-3" />
+            </Link>
           <div className="flex items-center gap-1">
             <span>Desarrollado por</span>
             <Link 
