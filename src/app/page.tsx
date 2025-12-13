@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import ProductCard from "@/components/product-card";
 import { getCategoriesWithProducts, getFeaturedProducts } from "@/services/products";
 
+export const dynamic = "force-dynamic";
+
+
 export default async function Home() {
   const featuredProducts = await getFeaturedProducts();
   const categoriesWithProducts = await getCategoriesWithProducts();
