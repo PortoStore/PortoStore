@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,15 @@ async function getCategories() {
 
 export default async function AdminCategoriesPage() {
     const categories = await getCategories();
+    async function deleteCategoryAction(formData: FormData) {
+        "use server";
+        const id = Number(formData.get("category_id"));
+        if (!id) return;
+        const supabase = await createClient();
+        await supabase.from("products").update({ category_id: null }).eq("category_id", id);
+        await supabase.from("categories").delete().eq("category_id", id);
+        revalidatePath("/admin/categories");
+    }
 
     return (
         <div className="grid gap-6 pb-8">
@@ -73,6 +83,10 @@ export default async function AdminCategoriesPage() {
                                         <Link href={`/admin/categories/${category.category_id}/edit`}>
                                             <Button variant="ghost" size="sm">Editar</Button>
                                         </Link>
+                                        <form action={deleteCategoryAction} className="inline-flex ml-2">
+                                            <input type="hidden" name="category_id" value={category.category_id} />
+                                            <Button type="submit" variant="destructive" size="sm">Eliminar</Button>
+                                        </form>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -112,6 +126,10 @@ export default async function AdminCategoriesPage() {
                                 <Link href={`/admin/categories/${category.category_id}/edit`}>
                                     <Button variant="outline" className="w-full">Editar</Button>
                                 </Link>
+                                <form action={deleteCategoryAction} className="mt-2">
+                                    <input type="hidden" name="category_id" value={category.category_id} />
+                                    <Button type="submit" variant="destructive" className="w-full">Eliminar</Button>
+                                </form>
                             </CardContent>
                         </Card>
                     ))

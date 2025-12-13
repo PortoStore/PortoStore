@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +58,17 @@ export default async function AdminProductsPage() {
             .join(' · ');
     };
 
+    async function deleteProductAction(formData: FormData) {
+        "use server";
+        const id = Number(formData.get("product_id"));
+        if (!id) return;
+        const supabase = await createClient();
+        await supabase.from("product_sizes").delete().eq("product_id", id);
+        await supabase.from("product_prices").delete().eq("product_id", id);
+        await supabase.from("images").delete().eq("product_id", id);
+        await supabase.from("products").delete().eq("product_id", id);
+        revalidatePath("/admin/products");
+    }
     return (
         <div className="grid gap-4">
             <div className="flex items-center gap-4">
@@ -121,6 +133,10 @@ export default async function AdminProductsPage() {
                                         <Link href={`/admin/products/${product.product_id}/edit`}>
                                             <Button variant="ghost" size="sm">Editar / Stock</Button>
                                         </Link>
+                                        <form action={deleteProductAction} className="inline-flex ml-2">
+                                            <input type="hidden" name="product_id" value={product.product_id} />
+                                            <Button type="submit" variant="destructive" size="sm">Eliminar</Button>
+                                        </form>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -178,6 +194,10 @@ export default async function AdminProductsPage() {
                                     <Link href={`/admin/products/${product.product_id}/edit`}>
                                         <Button variant="outline" className="w-full">Editar / Stock</Button>
                                     </Link>
+                                    <form action={deleteProductAction} className="mt-2">
+                                        <input type="hidden" name="product_id" value={product.product_id} />
+                                        <Button type="submit" variant="destructive" className="w-full">Eliminar</Button>
+                                    </form>
                                 </div>
                             </CardContent>
                         </Card>
