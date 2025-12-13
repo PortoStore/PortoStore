@@ -16,7 +16,8 @@ async function getProducts() {
         name,
         sku_base,
         categories (name),
-        product_prices (price)
+        product_prices (price),
+        product_sizes (size_id, stock)
     `)
         .order('created_at', { ascending: false });
 
@@ -28,7 +29,33 @@ async function getProducts() {
 }
 
 export default async function AdminProductsPage() {
-    const products = await getProducts();
+    type ProductRow = {
+        product_id: number;
+        name: string;
+        sku_base?: string | null;
+        categories?: { name: string } | { name: string }[] | null;
+        product_prices?: { price: number }[] | null;
+        product_sizes?: { size_id: number; stock: number }[] | null;
+    };
+    const products = (await getProducts()) as ProductRow[];
+    const getTotalStock = (p: ProductRow) => {
+        const rows = Array.isArray(p.product_sizes) ? p.product_sizes : [];
+        return rows.reduce((acc: number, r: { size_id: number; stock: number }) => acc + Number(r.stock || 0), 0);
+    };
+    const getSizeSummary = (p: ProductRow) => {
+        const rows = Array.isArray(p.product_sizes) ? p.product_sizes : [];
+        const dict: Record<number, number> = {};
+        rows.forEach((r: { size_id: number; stock: number }) => {
+            const k = Number(r.size_id);
+            dict[k] = (dict[k] || 0) + Number(r.stock || 0);
+        });
+        const order = [2, 3, 4, 5, 6, 7, 8];
+        const names: Record<number, string> = { 2: 'XS', 3: 'S', 4: 'M', 5: 'L', 6: 'XL', 7: 'XXL', 8: 'ST' };
+        return order
+            .filter((k) => dict[k] !== undefined)
+            .map((k) => `${names[k]}:${dict[k]}`)
+            .join(' · ');
+    };
 
     return (
         <div className="grid gap-4">
@@ -65,6 +92,7 @@ export default async function AdminProductsPage() {
                                 <TableHead>Nombre</TableHead>
                                 <TableHead>Categoría</TableHead>
                                 <TableHead>Precio</TableHead>
+                                <TableHead>Stock</TableHead>
                                 <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -83,16 +111,22 @@ export default async function AdminProductsPage() {
                                             ? `$${Number(product.product_prices[0].price || 0).toFixed(2)}`
                                             : '-'}
                                     </TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{getTotalStock(product)}</span>
+                                            <span className="text-xs text-muted-foreground">{getSizeSummary(product) || '-'}</span>
+                                        </div>
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <Link href={`/admin/products/${product.product_id}/edit`}>
-                                            <Button variant="ghost" size="sm">Editar</Button>
+                                            <Button variant="ghost" size="sm">Editar / Stock</Button>
                                         </Link>
                                     </TableCell>
                                 </TableRow>
                             ))}
                             {products.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                                         No hay productos. Creá uno para empezar.
                                     </TableCell>
                                 </TableRow>
@@ -132,9 +166,17 @@ export default async function AdminProductsPage() {
                                             : (product.categories as { name: string } | null)?.name || '-'}
                                     </span>
                                 </div>
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Stock total:</span>
+                                    <span className="font-medium">{getTotalStock(product)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Por talle:</span>
+                                    <span>{getSizeSummary(product) || '-'}</span>
+                                </div>
                                 <div className="pt-2">
                                     <Link href={`/admin/products/${product.product_id}/edit`}>
-                                        <Button variant="outline" className="w-full">Editar</Button>
+                                        <Button variant="outline" className="w-full">Editar / Stock</Button>
                                     </Link>
                                 </div>
                             </CardContent>

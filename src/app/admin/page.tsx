@@ -16,6 +16,68 @@ export default async function AdminDashboard() {
         .from('categories')
         .select('*', { count: 'exact', head: true });
 
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+    const sinceIso = since.toISOString();
+
+    const { count: ordersLast30 } = await supabase
+        .from('sales')
+        .select('*', { count: 'exact', head: true })
+        .gte('sale_date', sinceIso);
+
+    const { data: salesRows } = await supabase
+        .from('sales')
+        .select('total_amount,sale_date,status,payment_type_id')
+        .gte('sale_date', sinceIso);
+    const revenueLast30 = ((salesRows || []) as { total_amount: number; sale_date: string | null; status: string | null; payment_type_id: number | null }[])
+        .reduce((acc, r) => acc + Number(r.total_amount || 0), 0);
+
+    const { count: lowStockCount } = await supabase
+        .from('product_sizes')
+        .select('*', { count: 'exact', head: true })
+        .lte('stock', 3);
+
+    const days = Array.from({ length: 14 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (13 - i));
+        return d;
+    });
+    const dayKeys = days.map(d => d.toISOString().slice(0, 10));
+    const rows14 = ((salesRows || []) as { total_amount: number; sale_date: string | null; status: string | null; payment_type_id: number | null }[])
+        .filter(r => (r.sale_date || '').slice(0, 10) >= dayKeys[0]);
+    const revByDay: Record<string, number> = {};
+    const ordersByDay: Record<string, number> = {};
+    dayKeys.forEach(k => { revByDay[k] = 0; ordersByDay[k] = 0; });
+    rows14.forEach(r => {
+        const k = (r.sale_date || '').slice(0, 10);
+        if (k in revByDay) {
+            revByDay[k] += Number(r.total_amount || 0);
+            ordersByDay[k] += 1;
+        }
+    });
+    const revSeries = dayKeys.map(k => revByDay[k]);
+    const ordSeries = dayKeys.map(k => ordersByDay[k]);
+    const maxRev = Math.max(1, ...revSeries);
+    const maxOrd = Math.max(1, ...ordSeries);
+    const makePoints = (series: number[], max: number) => {
+        const n = series.length;
+        if (n <= 1) return "";
+        return series
+            .map((v, i) => {
+                const x = (i * 100) / (n - 1);
+                const y = 100 - ((v / max) * 100);
+                return `${x.toFixed(2)},${y.toFixed(2)}`;
+            })
+            .join(" ");
+    };
+    const revPoints = makePoints(revSeries, maxRev);
+    const ordPoints = makePoints(ordSeries, maxOrd);
+    const cashCount = rows14.filter(r => r.payment_type_id === 1).length;
+    const transferCount = rows14.filter(r => r.payment_type_id === 3).length;
+    const totalPayments = cashCount + transferCount || 1;
+    const cashPct = Math.round((cashCount / totalPayments) * 100);
+    const transferPct = 100 - cashPct;
+
     return (
         <div className="space-y-4">
             {/* Mobile Navigation Menu */}
@@ -75,22 +137,22 @@ export default async function AdminDashboard() {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Ultimas Compras</CardTitle>
+                        <CardTitle className="text-sm font-medium">Ventas últimos 30 días</CardTitle>
                         <Receipt className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">--</div>
-                        <p className="text-xs text-muted-foreground">....</p>
+                        <div className="text-2xl font-bold">${Number(revenueLast30 || 0).toFixed(2)}</div>
+                        <p className="text-xs text-muted-foreground">{ordersLast30 ?? 0} pedidos</p>
                     </CardContent>
                 </Card>
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Horarios</CardTitle>
+                        <CardTitle className="text-sm font-medium">Stock bajo</CardTitle>
                         <Tags className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">--</div>
-                        <p className="text-xs text-muted-foreground">....</p>
+                        <div className="text-2xl font-bold">{lowStockCount ?? 0}</div>
+                        <p className="text-xs text-muted-foreground">Variaciones con ≤ 3 unidades</p>
                     </CardContent>
                 </Card>
                 <div className="col-span-full grid gap-4 md:grid-cols-2">
@@ -115,6 +177,72 @@ export default async function AdminDashboard() {
                         </CardContent>
                     </Card>
                 </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>KPI: Ingresos por día (14)</CardTitle>
+                        <CardDescription>Últimos 14 días</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-36">
+                            <polyline points={revPoints} fill="none" stroke="rgb(22,163,74)" strokeWidth="2" />
+                            {revSeries.map((v, i) => {
+                                const x = (i * 100) / (revSeries.length - 1);
+                                const y = 100 - ((v / maxRev) * 100);
+                                return <circle key={i} cx={x} cy={y} r="1.5" fill="rgb(22,163,74)" />;
+                            })}
+                        </svg>
+                        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                            {dayKeys.map((k) => (<span key={k}>{k.slice(5)}</span>))}
+                        </div>
+                        <div className="mt-2 text-sm text-muted-foreground">Máx ${maxRev.toFixed(0)}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>KPI: Pedidos por día (14)</CardTitle>
+                        <CardDescription>Últimos 14 días</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-36">
+                            <polyline points={ordPoints} fill="none" stroke="rgb(37,99,235)" strokeWidth="2" />
+                            {ordSeries.map((v, i) => {
+                                const x = (i * 100) / (ordSeries.length - 1);
+                                const y = 100 - ((v / maxOrd) * 100);
+                                return <circle key={i} cx={x} cy={y} r="1.5" fill="rgb(37,99,235)" />;
+                            })}
+                        </svg>
+                        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                            {dayKeys.map((k) => (<span key={k}>{k.slice(5)}</span>))}
+                        </div>
+                        <div className="mt-2 text-sm text-muted-foreground">Máx {maxOrd}</div>
+                    </CardContent>
+                </Card>
+                <Card className="md:col-span-2">
+                    <CardHeader>
+                        <CardTitle>KPI: Métodos de pago</CardTitle>
+                        <CardDescription>Distribución últimos 14 días</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-3">
+                            <div className="flex items-center justify-between text-sm">
+                                <span>Efectivo</span>
+                                <span className="text-muted-foreground">{cashCount} ({cashPct}%)</span>
+                            </div>
+                            <div className="h-2 w-full bg-muted rounded">
+                                <div className="h-2 bg-green-600 rounded" style={{ width: `${cashPct}%` }} />
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                                <span>Transferencia</span>
+                                <span className="text-muted-foreground">{transferCount} ({transferPct}%)</span>
+                            </div>
+                            <div className="h-2 w-full bg-muted rounded">
+                                <div className="h-2 bg-blue-600 rounded" style={{ width: `${transferPct}%` }} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );
