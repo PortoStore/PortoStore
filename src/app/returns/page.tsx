@@ -1,6 +1,18 @@
 import React from "react";
+import { createClient } from "@/lib/supabase/server";
 
 export default function ReturnsPage() {
+  const supabasePromise = createClient();
+  async function getSettings() {
+    const supabase = await supabasePromise;
+    const { data } = await supabase
+      .from("store_settings")
+      .select("address,phone")
+      .eq("id", 1)
+      .maybeSingle();
+    return (data as { address?: string | null; phone?: string | null } | null) || null;
+  }
+  const settingsPromise = getSettings();
   return (
     <div className="container mx-auto px-4 py-12 max-w-4xl">
       <h1 className="text-3xl font-bold mb-8 text-center">Políticas de Devolución</h1>
@@ -13,10 +25,10 @@ export default function ReturnsPage() {
           </p>
           <ol className="list-decimal pl-6 space-y-2 text-muted-foreground">
             <li>
-              En nuestro local en <strong>Entre Ríos 1420, Posadas, Misiones</strong>.
+              En nuestro local en <strong>{(await settingsPromise)?.address || "Entre Ríos 1420, Posadas, Misiones"}</strong>.
             </li>
             <li>
-              Desde tu domicilio, escribiendo a la línea de atención al cliente <strong>376 436-651</strong> ¡Nosotros te atenderemos en breve!
+              Desde tu domicilio, escribiendo a la línea de atención al cliente <strong>{(await settingsPromise)?.phone || "376 436-651"}</strong> ¡Nosotros te atenderemos en breve!
             </li>
           </ol>
         </section>

@@ -3,11 +3,38 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Instagram, MapPin, Mail, Clock, ExternalLink, Lock } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
 
 export default function Footer() {
   const pathname = usePathname();
+  const [address, setAddress] = useState<string>("Entre Ríos 1420, Posadas, Misiones");
+  const [email, setEmail] = useState<string>("tiendaportostore@gmail.com");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("store_settings")
+        .select("address,email")
+        .eq("id", 1)
+        .maybeSingle();
+      if (!cancelled && data) {
+        const d = data as { address?: string | null; email?: string | null };
+        if (d.address) setAddress(d.address);
+        if (d.email) setEmail(d.email);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   if (pathname?.startsWith("/admin")) return null;
+
+  const [line1, line2] = (() => {
+    const parts = address.split(",").map(s => s.trim());
+    if (parts.length >= 2) return [parts[0], parts.slice(1).join(", ")];
+    return [address, ""];
+  })();
 
   return (
     <footer className="border-t bg-background pt-12 pb-8">
@@ -57,8 +84,8 @@ export default function Footer() {
                 <MapPin className="size-4 text-primary" /> Visítanos
               </h3>
               <div className="text-sm text-muted-foreground pl-6">
-                <p>Entre Ríos 1420</p>
-                <p>Posadas, Misiones</p>
+                <p>{line1}</p>
+                {line2 && <p>{line2}</p>}
               </div>
             </div>
 
@@ -73,8 +100,8 @@ export default function Footer() {
             </div>
 
             <div className="pt-2 border-t border-border/40">
-               <a href="mailto:info@portostore.com" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mt-2">
-                 <Mail className="size-4" /> tiendaportostore@gmail.com
+               <a href={`mailto:${email}`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mt-2">
+                 <Mail className="size-4" /> {email}
                </a>
             </div>
           </div>

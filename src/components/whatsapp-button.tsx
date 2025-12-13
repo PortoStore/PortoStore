@@ -1,16 +1,35 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function WhatsAppButton() {
   const pathname = usePathname();
+  const [waNumber, setWaNumber] = useState<string>("543756433760");
 
-  // Ocultar en /admin
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("store_settings")
+        .select("whatsapp")
+        .eq("id", 1)
+        .maybeSingle();
+      if (!cancelled && data) {
+        const raw = (data as { whatsapp?: string | null }).whatsapp || "";
+        const digits = raw.replace(/[^0-9]/g, "");
+        if (digits) setWaNumber(digits);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   if (pathname?.includes("/admin")) return null;
 
   return (
     <a
-      href="https://wa.me/543756433760?text=Hola,%20tengo%20una%20consulta"
+      href={`https://wa.me/${waNumber}?text=Hola,%20tengo%20una%20consulta`}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="WhatsApp"

@@ -28,13 +28,13 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
-  const bank = {
+  const [bank, setBank] = useState({
     cbu: "2850590940090412345678",
     alias: "portostore.cobros",
     bank: "Banco Nación",
     account: "Porto Store S.A.",
     cuit: "30-12345678-9",
-  };
+  });
   const branches = [
     { code: "POS-CENTRO", name: "Correo Argentino - Posadas Centro", address: "Av. Mitre 1234", hours: "Lun-Vie 9-17" },
     { code: "POS-NORTE", name: "Correo Argentino - Posadas Norte", address: "Av. López y Planes 456", hours: "Lun-Vie 9-17" },
@@ -87,6 +87,28 @@ export default function CheckoutPage() {
     run();
     return () => { cancelled = true; };
   }, [items]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("store_settings")
+        .select("bank,cbu,alias,account,cuit")
+        .eq("id", 1)
+        .maybeSingle();
+      if (!cancelled && data) {
+        const d = data as { bank?: string | null; cbu?: string | null; alias?: string | null; account?: string | null; cuit?: string | null };
+        setBank({
+          bank: d.bank || "Banco Nación",
+          cbu: d.cbu || "2850590940090412345678",
+          alias: d.alias || "portostore.cobros",
+          account: d.account || "Porto Store S.A.",
+          cuit: d.cuit || "30-12345678-9",
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   function validateShipping(): boolean {
     const next: Record<string, string> = {};

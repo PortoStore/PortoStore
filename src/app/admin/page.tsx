@@ -106,6 +106,12 @@ export default async function AdminDashboard() {
                         Pedidos
                     </Button>
                 </Link>
+                <Link href="/admin/store">
+                    <Button variant="outline" className="w-full justify-start gap-3 h-14 text-lg">
+                        <Store className="h-5 w-5" />
+                        Mi tienda
+                    </Button>
+                </Link>
                 <AdminLogoutButton />
             </div>
 
