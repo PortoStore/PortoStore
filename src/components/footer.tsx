@@ -46,14 +46,7 @@ export default function Footer() {
           {/* COLUMNA 1: LOGO + INSTAGRAM */}
           <div className="flex flex-col items-start gap-6">
             {/* Logo */}
-            <div className="relative h-10 w-40">
-               <Image 
-                  src="/PORTO - 2.PNG" 
-                  alt="PortoStore" 
-                  fill 
-                  className="object-contain object-left" 
-               />
-            </div>
+           
             
             {/* Botón Instagram (Más visible para compensar falta de texto) */}
             <Link 

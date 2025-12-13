@@ -16,6 +16,7 @@ export default function Navbar() {
   const [categories, setCategories] = useState<string[]>([]);
   const [cartCount, setCartCount] = useState(() => getCartCount());
   const [isScrolled, setIsScrolled] = useState(true);
+  const [isProductsOpen, setIsProductsOpen] = useState(false);
 
   const pathname = usePathname();
   const isHome = pathname === "/";
@@ -94,30 +95,17 @@ export default function Navbar() {
         <nav className="hidden lg:flex items-center gap-8 text-sm font-medium absolute left-1/2 -translate-x-1/2 whitespace-nowrap z-10">
           <Link href="/" className="hover:text-primary transition-colors">Inicio</Link>
           
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
-              <button className="inline-flex items-center gap-1 hover:text-primary transition-colors outline-none">
-                Productos <ChevronDown className="size-4" />
-              </button>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Content sideOffset={8} className="bg-background/95 backdrop-blur-xl border rounded-md shadow-lg p-1 min-w-[180px] z-50">
-              {categories.length === 0 ? (
-                 <div className="p-4 flex justify-center"><Loader2 className="animate-spin size-4"/></div>
-              ) : (
-                categories.map((name) => (
-                  <DropdownMenu.Item key={name} asChild>
-                    <Link href={`/category/${encodeURIComponent(name)}`} className="block rounded-sm px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer outline-none">
-                      {name}
-                    </Link>
-                  </DropdownMenu.Item>
-                ))
-              )}
-            </DropdownMenu.Content>
-          </DropdownMenu.Root>
+          <Link href="/categories" className="hover:text-primary transition-colors">
+            Categorías
+          </Link>
 
           {/* CAMBIO 2: Texto cambiado */}
           <Link href="/returns" className="hover:text-primary transition-colors">
             Políticas de Devolución
+          </Link>
+
+          <Link href="/help" className="hover:text-primary transition-colors">
+            Ayuda
           </Link>
         </nav>
 
@@ -154,23 +142,11 @@ export default function Navbar() {
               <nav className="mt-8 flex flex-col gap-4 px-4">
                   <Link href="/" onClick={() => setOpen(false)} className="font-medium">Inicio</Link>
                   
-                  <div className="flex flex-col gap-3">
-                    <h4 className="font-medium">Productos</h4>
-                    <div className="flex flex-col gap-2 pl-4 border-l">
-                      {categories.map((name) => (
-                        <Link 
-                          key={name}
-                          href={`/category/${encodeURIComponent(name)}`}
-                          onClick={() => setOpen(false)}
-                          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {name}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
+                  <Link href="/categories" onClick={() => setOpen(false)} className="font-medium">Categorías</Link>
 
                   <Link href="/returns" onClick={() => setOpen(false)} className="font-medium">Políticas de Devolución</Link>
+
+                  <Link href="/help" onClick={() => setOpen(false)} className="font-medium">Ayuda</Link>
               </nav>
             </SheetContent>
           </Sheet>
