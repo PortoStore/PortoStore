@@ -6,6 +6,7 @@ export interface Product {
     name: string;
     price: number;
     image: string;
+    images: string[];
 }
 
 export interface Category {
@@ -37,6 +38,7 @@ export async function getFeaturedProducts(): Promise<Product[]> {
         name: p.name,
         price: p.product_prices?.[0]?.price || 0,
         image: p.images?.[0]?.url || '',
+        images: p.images?.map(i => i.url) || [],
     }));
 }
 
@@ -110,6 +112,7 @@ export async function getProductsByCategory(categoryName: string): Promise<Produ
         name: p.name,
         price: p.product_prices?.[0]?.price || 0,
         image: p.images?.[0]?.url || '',
+        images: p.images?.map(i => i.url) || [],
     }));
 }
 
@@ -164,6 +167,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
             name: dataId.name,
             price: dataId.product_prices?.[0]?.price || 0,
             image: dataId.images?.[0]?.url || '',
+            images: dataId.images?.map((i: { url: string }) => i.url) || [],
         };
     }
 
@@ -173,5 +177,6 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
         name: data.name,
         price: data.product_prices?.[0]?.price || 0,
         image: data.images?.[0]?.url || '',
+        images: data.images?.map((i: { url: string }) => i.url) || [],
     };
 }

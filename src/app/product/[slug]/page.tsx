@@ -1,10 +1,10 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getProductBySlug, getFeaturedProducts } from "@/services/products";
 import { supabase } from "@/lib/supabase";
 import ProductSizeSelector from "@/components/product-size-selector";
 // import { Button } from "@/components/ui/button";
 import ProductCard from "@/components/product-card";
+import ProductGallery from "@/components/product-gallery";
 
 type Params = { slug: string };
 
@@ -47,20 +47,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Gallery */}
-        <div className="flex flex-col md:flex-row-reverse gap-4">
-          <div className="flex-grow">
-            <div className="relative aspect-[4/5] rounded-xl overflow-hidden">
-              <Image src={product.image} alt={product.name} fill className="object-cover" />
-            </div>
-          </div>
-          <div className="flex md:flex-col gap-3">
-            {[product.image, product.image, product.image, product.image].map((src, i) => (
-              <div key={i} className="relative size-20 rounded-lg overflow-hidden">
-                <Image src={src} alt={`${product.name} ${i + 1}`} fill className="object-cover" />
-              </div>
-            ))}
-          </div>
-        </div>
+        <ProductGallery images={product.images} productName={product.name} />
 
         {/* Info */}
         <div className="flex flex-col gap-6">
