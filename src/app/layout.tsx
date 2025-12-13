@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
+import WhatsAppButton from "@/components/whatsapp-button";
 
 const manrope = Manrope({
   variable: "--font-geist-sans",
@@ -24,12 +25,13 @@ export default function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body className={`${manrope.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <div className="min-h-dvh flex flex-col">
+          <div className="min-h-dvh flex flex-col relative">
             <Navbar />
             <main className="flex-1">
               {children}
             </main>
             <Footer />
+            <WhatsAppButton />
           </div>
         </ThemeProvider>
       </body>

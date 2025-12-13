@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -35,6 +35,7 @@ const STATUS_OPTIONS = [
 export default function AdminOrderDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const supabase = createClient();
   const id = Number(params?.id);
   const [sale, setSale] = useState<Sale | null>(null);
   const [details, setDetails] = useState<SaleDetail[]>([]);
