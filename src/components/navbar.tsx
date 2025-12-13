@@ -15,7 +15,7 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
   const [cartCount, setCartCount] = useState(() => getCartCount());
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(true);
 
   const pathname = usePathname();
   const isHome = pathname === "/";
@@ -42,17 +42,11 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    if (!isHome) {
-      setIsScrolled(true);
-      return;
-    }
+    if (!isHome) return;
 
     // Try to find the hero element
     const hero = document.getElementById("home-hero");
-    if (!hero) {
-        setIsScrolled(true);
-        return;
-    }
+    if (!hero) { return; }
 
     const observer = new IntersectionObserver(
       ([entry]) => {

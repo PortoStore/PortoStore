@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Package, Tags, Plus, LayoutDashboard, Receipt, Store } from "lucide-react";
+import AdminLogoutButton from "@/components/admin-logout-button";
 
 export default async function AdminDashboard() {
     const supabase = await createClient();
@@ -43,6 +44,7 @@ export default async function AdminDashboard() {
                         Pedidos
                     </Button>
                 </Link>
+                <AdminLogoutButton />
             </div>
 
             {/* Desktop Dashboard Stats & Quick Actions */}

@@ -92,10 +92,13 @@ export default function CartPage() {
                     </div>
                   </div>
                   <div className="flex flex-1 items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
+                    <div className="hidden sm:flex items-center gap-2">
                       <button className="h-8 w-8 rounded-full border" onClick={() => decQty(ci.product_id, ci.size_id, Number(ci.qty) || 1)}>-</button>
                       <input className="w-8 text-center bg-transparent" value={ci.qty} readOnly />
                       <button className="h-8 w-8 rounded-full border" onClick={() => incQty(ci.product_id, ci.size_id, Number(ci.qty) || 1)}>+</button>
+                    </div>
+                    <div className="flex sm:hidden items-center text-sm text-muted-foreground">
+                      <span>Cantidad: {ci.qty}</span>
                     </div>
                     <p className="font-semibold">${total.toFixed(2)}</p>
                     <button className="text-muted-foreground hover:text-red-500" onClick={() => remove(ci.product_id, ci.size_id)}>Eliminar</button>

@@ -1,15 +1,14 @@
-"use client";
-
+ "use client";
+ 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+ import { usePathname } from "next/navigation";
+import AdminLogoutButton from "@/components/admin-logout-button";
 import {
     LayoutDashboard,
     Package,
     Tags,
     Receipt,
-    Store
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 export default function AdminLayout({
     children,
@@ -64,12 +63,7 @@ export default function AdminLayout({
                     </nav>
                 </div>
                 <div className="mt-auto p-4">
-                    <Link href="/" target="_blank">
-                        <Button variant="outline" className="w-full gap-2">
-                            <Store className="h-4 w-4" />
-                            Ir a la tienda
-                        </Button>
-                    </Link>
+                    <AdminLogoutButton />
                 </div>
             </aside>
             <div className="flex flex-col flex-1 sm:gap-4 sm:py-4">

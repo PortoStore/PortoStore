@@ -39,7 +39,7 @@ export default function ProductSizeSelector({ sizes, stockBySizeId, productId, p
         })}
       </div>
       <div className="flex flex-col sm:flex-row gap-4 items-center">
-        <div className="flex items-center border rounded-lg p-2">
+        <div className="hidden sm:flex items-center border rounded-lg p-2">
           <button type="button" className="px-2" onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={!selectedSizeId}>-</button>
           <input
             className="w-12 text-center bg-transparent"

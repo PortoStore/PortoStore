@@ -37,6 +37,15 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Si el usuario ya está autenticado, no permitir acceder a /admin/login
+  if (request.nextUrl.pathname.startsWith('/admin/login')) {
+    if (user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin'
+      return NextResponse.redirect(url)
+    }
+  }
+
   if (request.nextUrl.pathname.startsWith('/admin') && !request.nextUrl.pathname.startsWith('/admin/login')) {
     if (!user) {
       // no user, potentially respond by redirecting the user to the login page
