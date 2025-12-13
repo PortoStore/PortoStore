@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { getCartItems, clearCart } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ export default function CheckoutPage() {
   const [saving, setSaving] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [transferRef, setTransferRef] = useState<string>("");
+  const [copiedId, setCopiedId] = useState<boolean>(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -316,13 +318,45 @@ export default function CheckoutPage() {
           </details>
           <Button className="w-full" type="button" onClick={finalizePurchase} disabled={saving || items.length === 0}>Finalizar Compra</Button>
           {submitError && (<div className="mt-3 text-sm text-red-500">{submitError}</div>)}
-          {success && (
-            <div className="mt-4 rounded-md border p-4 text-sm">
-              <p className="font-medium">¡Gracias por tu compra!</p>
-              <p className="text-muted-foreground">Nos vamos a contactar con vos para coordinar el envío o retiro.</p>
-              {saleId !== null && (<p className="text-muted-foreground">Número de pedido: #{saleId}</p>)}
-            </div>
-          )}
+          <Dialog open={success} onOpenChange={setSuccess}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>¡Compra confirmada!</DialogTitle>
+                <DialogDescription>Tu pedido se generó correctamente.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-2 text-sm">
+                {saleId !== null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">N° de pedido</span>
+                    <span className="font-mono font-bold">#{saleId}</span>
+                  </div>
+                )}
+                {transferRef && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Comprobante</span>
+                    <span className="font-mono">{transferRef}</span>
+                  </div>
+                )}
+                <div className="text-muted-foreground">Guardá este número para cualquier consulta.</div>
+              </div>
+              <DialogFooter>
+                {saleId !== null && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(String(saleId));
+                      setCopiedId(true);
+                      setTimeout(() => setCopiedId(false), 1500);
+                    }}
+                  >
+                    {copiedId ? "Copiado" : "Copiar N° pedido"}
+                  </Button>
+                )}
+                <Button type="button" onClick={() => setSuccess(false)}>Aceptar</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
         <div className="lg:col-span-5">
           <div className="sticky top-28 rounded-xl border p-6">
