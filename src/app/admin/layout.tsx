@@ -9,6 +9,7 @@ import {
     Tags,
     Receipt,
     Store,
+    ExternalLink,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -67,6 +68,14 @@ export default function AdminLayout({
                         >
                             <Store className="h-4 w-4" />
                             Mi tienda
+                        </Link>
+                        <Link
+                            href="/"
+                            target="_blank"
+                            className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                        >
+                            <ExternalLink className="h-4 w-4" />
+                            Ver Tienda Online
                         </Link>
                     </nav>
                 </div>
