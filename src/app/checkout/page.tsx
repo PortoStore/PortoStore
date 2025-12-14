@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { getCartItems, clearCart } from "@/lib/utils";
+import { sendOrderEmails } from "@/actions/send-emails";
 
 export default function CheckoutPage() {
   const [shipping, setShipping] = useState<"home" | "branch" | "store">("home");
@@ -112,10 +113,13 @@ export default function CheckoutPage() {
 
   function validateShipping(): boolean {
     const next: Record<string, string> = {};
+    
+    // Validaciones comunes para todos los métodos
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = "Email inválido";
+    if (!firstName.trim()) next.firstName = "Nombre requerido";
+    if (!lastName.trim()) next.lastName = "Apellido requerido";
+
     if (shipping === "home") {
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = "Email inválido";
-      if (!firstName.trim()) next.firstName = "Nombre requerido";
-      if (!lastName.trim()) next.lastName = "Apellido requerido";
       if (!address.trim()) next.address = "Dirección requerida";
       if (!city.trim()) next.city = "Ciudad requerida";
       const cp = postalCode.trim();
@@ -162,6 +166,28 @@ export default function CheckoutPage() {
       }
       clearCart();
       setItems([]);
+
+      // Enviar emails de confirmación
+      try {
+        const emailItems = items.map(i => ({
+          name: products[i.product_id]?.name || `Producto #${i.product_id}`,
+          quantity: Number(i.qty) || 1,
+          price: unitPriceById[i.product_id] || 0
+        }));
+
+        await sendOrderEmails({
+          orderId: sid,
+          customerName: `${firstName} ${lastName}`,
+          customerEmail: email,
+          items: emailItems,
+          total,
+          shippingMethod: shipping,
+          paymentMethod: paymentMethod
+        });
+      } catch (err) {
+        console.error("Failed to send emails:", err);
+      }
+
       setSuccess(true);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "No se pudo finalizar la compra";
@@ -202,6 +228,24 @@ export default function CheckoutPage() {
               <span className="rotate-0 group-open:rotate-180 transition-transform">⌄</span>
             </summary>
             <div className="mt-6 grid gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1" htmlFor="email">Email</label>
+                    <Input id="email" placeholder="tu@email.com" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErrors((prev) => ({ ...prev, email: "" })); }} />
+                    {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1" htmlFor="firstName">Nombre</label>
+                    <Input id="firstName" placeholder="Juan" value={firstName} onChange={(e) => { setFirstName(e.target.value); setErrors((prev) => ({ ...prev, firstName: "" })); }} />
+                    {errors.firstName && <div className="text-red-500 text-xs mt-1">{errors.firstName}</div>}
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1" htmlFor="lastName">Apellido</label>
+                    <Input id="lastName" placeholder="Pérez" value={lastName} onChange={(e) => { setLastName(e.target.value); setErrors((prev) => ({ ...prev, lastName: "" })); }} />
+                    {errors.lastName && <div className="text-red-500 text-xs mt-1">{errors.lastName}</div>}
+                  </div>
+              </div>
+
               <fieldset className="grid gap-3">
                 <legend className="text-sm font-medium">Método de envío</legend>
                 <label className="flex items-center gap-2 text-sm">
@@ -218,22 +262,7 @@ export default function CheckoutPage() {
                 </label>
               </fieldset>
               {shipping === "home" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium mb-1" htmlFor="email">Email</label>
-                    <Input id="email" placeholder="tu@email.com" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErrors((prev) => ({ ...prev, email: "" })); }} />
-                    {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1" htmlFor="firstName">Nombre</label>
-                    <Input id="firstName" placeholder="Juan" value={firstName} onChange={(e) => { setFirstName(e.target.value); setErrors((prev) => ({ ...prev, firstName: "" })); }} />
-                    {errors.firstName && <div className="text-red-500 text-xs mt-1">{errors.firstName}</div>}
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1" htmlFor="lastName">Apellido</label>
-                    <Input id="lastName" placeholder="Pérez" value={lastName} onChange={(e) => { setLastName(e.target.value); setErrors((prev) => ({ ...prev, lastName: "" })); }} />
-                    {errors.lastName && <div className="text-red-500 text-xs mt-1">{errors.lastName}</div>}
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <div className="sm:col-span-2">
                     <label className="text-sm font-medium mb-1" htmlFor="address">Dirección</label>
                     <Input id="address" placeholder="Av. Siempre Viva 742" value={address} onChange={(e) => { setAddress(e.target.value); setErrors((prev) => ({ ...prev, address: "" })); }} />
@@ -280,7 +309,7 @@ export default function CheckoutPage() {
               {shipping === "store" && (
                 <div className="grid gap-2 text-sm">
                   <div>Retiro en tienda principal.</div>
-                  <div className="text-muted-foreground">Dirección: Av. Principal 123. Presentá tu número de pedido.</div>
+                  <div className="text-muted-foreground">Dirección: Entre Rios 1420, Posadas, Misiones. Presentá tu número de pedido.</div>
                 </div>
               )}
             </div>
