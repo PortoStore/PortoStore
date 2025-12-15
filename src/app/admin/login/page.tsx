@@ -32,7 +32,8 @@ export default function LoginPage() {
       })
 
       if (error) {
-        setError(error.message)
+        const isInvalid = /invalid login credentials/i.test(error.message || '')
+        setError(isInvalid ? 'Credenciales incorrectas. Por favor, compruébalas.' : (error.message || 'No se pudo iniciar sesión'))
         return
       }
 
