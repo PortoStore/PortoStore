@@ -9,11 +9,8 @@ import {
     Tags,
     Receipt,
     Store,
-<<<<<<< Updated upstream
     ExternalLink,
-=======
     Percent,
->>>>>>> Stashed changes
 } from "lucide-react";
 
 export default function AdminLayout({
