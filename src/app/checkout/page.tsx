@@ -36,6 +36,9 @@ export default function CheckoutPage() {
     account: "Porto Store S.A.",
     cuit: "30-12345678-9",
   });
+  const [discountCode, setDiscountCode] = useState<string>("");
+  const [discountErr, setDiscountErr] = useState<string | null>(null);
+  const [appliedDiscount, setAppliedDiscount] = useState<{ id: number; code: string; type: "fixed" | "percentage"; value: number } | null>(null);
   const branches = [
     { code: "POS-CENTRO", name: "Correo Argentino - Posadas Centro", address: "Av. Mitre 1234", hours: "Lun-Vie 9-17" },
     { code: "POS-NORTE", name: "Correo Argentino - Posadas Norte", address: "Av. López y Planes 456", hours: "Lun-Vie 9-17" },
@@ -143,7 +146,7 @@ export default function CheckoutPage() {
       const initialStatus = paymentMethod === "transfer" ? "pending_approval" : "pending";
       const { data: saleRow, error: saleErr } = await supabase
         .from("sales")
-        .insert([{ payment_type_id: paymentId, total_amount: total, status: initialStatus }])
+        .insert([{ payment_type_id: paymentId, total_amount: totalWithDiscount, status: initialStatus }])
         .select()
         .single();
       if (saleErr) throw saleErr;
@@ -161,8 +164,24 @@ export default function CheckoutPage() {
       if (paymentMethod === "transfer") {
         const { error: recErr } = await supabase
           .from("payment_records")
-          .insert([{ sale_id: sid, payment_type_id: 3, amount: total, reference_number: transferRef || null, record_status: "recorded" }]);
+          .insert([{ sale_id: sid, payment_type_id: 3, amount: totalWithDiscount, reference_number: transferRef || null, record_status: "recorded" }]);
         if (recErr) throw recErr;
+      }
+      if (appliedDiscount) {
+        const { error: usageErr } = await supabase
+          .from("discount_usages")
+          .insert([{ sale_id: sid, discount_id: appliedDiscount.id, code: appliedDiscount.code, amount_applied: discountAmount }]);
+        if (usageErr) throw usageErr;
+        const { data: discRow } = await supabase
+          .from("discounts")
+          .select("uses_count")
+          .eq("discount_id", appliedDiscount.id)
+          .single();
+        const currentCount = Number(((discRow as { uses_count?: number } | null)?.uses_count) || 0);
+        await supabase
+          .from("discounts")
+          .update({ uses_count: currentCount + 1 })
+          .eq("discount_id", appliedDiscount.id);
       }
       clearCart();
       setItems([]);
@@ -180,7 +199,7 @@ export default function CheckoutPage() {
           customerName: `${firstName} ${lastName}`,
           customerEmail: email,
           items: emailItems,
-          total,
+          total: totalWithDiscount,
           shippingMethod: shipping,
           paymentMethod: paymentMethod
         });
@@ -210,6 +229,47 @@ export default function CheckoutPage() {
     const cost = calcShippingFromPostalCode(cp);
     setShippingCost(cost);
   }
+  async function applyDiscount() {
+    setDiscountErr(null);
+    const code = discountCode.trim().toUpperCase();
+    if (!code) { setDiscountErr("Ingresá un código"); return; }
+    const { data } = await supabase
+      .from("discounts")
+      .select("discount_id,code,type,value,is_active,valid_from,valid_until,max_uses,uses_count")
+      .ilike("code", code)
+      .maybeSingle();
+    type DiscountRow = {
+      discount_id: number;
+      code: string;
+      type: "fixed" | "percentage";
+      value: number;
+      is_active: boolean;
+      valid_from: string | null;
+      valid_until: string | null;
+      max_uses: number | null;
+      uses_count: number | null;
+    };
+    const row = (data as DiscountRow | null);
+    if (!row || !row.is_active) { setDiscountErr("Código inválido"); return; }
+    const now = new Date();
+    const vf = row.valid_from ? new Date(row.valid_from) : null;
+    const vu = row.valid_until ? new Date(row.valid_until) : null;
+    if ((vf && now < vf) || (vu && now > vu)) { setDiscountErr("Código vencido"); return; }
+    const maxUses = row.max_uses;
+    const usesCount = Number(row.uses_count || 0);
+    if (maxUses !== null && !Number.isNaN(maxUses) && usesCount >= maxUses) { setDiscountErr("Límite de usos alcanzado"); return; }
+    const t = row.type || "percentage";
+    const v = Number(row.value || 0);
+    if (v <= 0) { setDiscountErr("Valor inválido"); return; }
+    setAppliedDiscount({ id: Number(row.discount_id), code, type: t, value: v });
+  }
+  const discountBase = subtotalDb;
+  const discountAmount = appliedDiscount
+    ? appliedDiscount.type === "fixed"
+      ? Math.min(appliedDiscount.value, discountBase)
+      : Math.min((discountBase * appliedDiscount.value) / 100, discountBase)
+    : 0;
+  const totalWithDiscount = Math.max(0, subtotalDb - discountAmount) + shippingCost;
   return (
     <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
       <div className="flex flex-wrap gap-2 mb-8 text-sm">
@@ -431,12 +491,16 @@ export default function CheckoutPage() {
             </ul>
             <div className="mt-8 pt-6 border-t space-y-2 text-sm">
               <div className="flex items-center gap-2 mb-2">
-                <Input placeholder="Código de descuento" />
-                <Button variant="secondary">Aplicar</Button>
+                <Input placeholder="Código de descuento" value={discountCode} onChange={(e) => setDiscountCode(e.target.value)} />
+                <Button variant="secondary" onClick={applyDiscount}>Aplicar</Button>
               </div>
+              {discountErr && (<div className="text-red-500 text-xs">{discountErr}</div>)}
               <div className="flex justify-between"><span>Subtotal</span><span>${subtotalDb.toFixed(2)}</span></div>
               <div className="flex justify-between"><span>Envío</span><span>${shippingCost.toFixed(2)}</span></div>
-              <div className="flex justify-between text-base font-bold border-t pt-4 mt-4"><span>Total</span><span>${total.toFixed(2)}</span></div>
+              {appliedDiscount && (
+                <div className="flex justify-between text-primary"><span>Descuento</span><span>-${discountAmount.toFixed(2)}</span></div>
+              )}
+              <div className="flex justify-between text-base font-bold border-t pt-4 mt-4"><span>Total</span><span>${totalWithDiscount.toFixed(2)}</span></div>
             </div>
           </div>
         </div>

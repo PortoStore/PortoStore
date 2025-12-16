@@ -39,7 +39,11 @@ export default function NewDiscountPage() {
         value: valueRaw,
         is_active: isActiveRaw,
       };
-      if (validUntilRaw) payload.valid_until = new Date(validUntilRaw).toISOString();
+      if (validUntilRaw) {
+        const d = new Date(validUntilRaw);
+        d.setHours(23, 59, 59, 999);
+        payload.valid_until = d.toISOString();
+      }
       const parsedMax = typeof maxUsesRaw === "string" && maxUsesRaw.trim() !== "" ? Number(maxUsesRaw) : null;
       if (parsedMax !== null && !Number.isNaN(parsedMax) && parsedMax >= 0) {
         payload.max_uses = parsedMax;
