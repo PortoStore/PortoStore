@@ -1,8 +1,25 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Mail, Phone, MapPin, MessageCircle } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 
-export default function HelpPage() {
+export default async function HelpPage() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("store_settings")
+    .select("store_name,address,phone,email,whatsapp")
+    .eq("id", 1)
+    .maybeSingle();
+  const settings = (data as { store_name?: string | null; address?: string | null; phone?: string | null; email?: string | null; whatsapp?: string | null } | null) || null;
+  const phone = settings?.phone || "+54 9 376 436-6511";
+  const email = settings?.email || "ventas@tiendaportostore.com";
+  const address = settings?.address || "Entre Rios 1420, Posadas, Misiones";
+  const storeName = settings?.store_name || "Sucursal Posadas";
+  const addressParts = address.split(",").map(s => s.trim());
+  const addressLine1 = addressParts[0] || address;
+  const addressLine2 = addressParts.slice(1).join(", ");
+  const waDigits = (settings?.whatsapp || phone).replace(/[^0-9]/g, "");
+  const waLink = `https://wa.me/${waDigits}?text=Hola!%20Necesito%20ayuda`;
   return (
     <div className="container mx-auto px-4 py-12 max-w-4xl">
       <h1 className="text-4xl font-bold tracking-tight mb-2">Centro de Ayuda</h1>
@@ -23,12 +40,12 @@ export default function HelpPage() {
                 <Phone className="h-6 w-6 text-primary" />
               </div>
               <h3 className="font-medium mb-1">Teléfono</h3>
-              <p className="text-sm text-muted-foreground">+54 9 376 436-6511</p>
+              <p className="text-sm text-muted-foreground">{phone}</p>
             </div>
             
             {/* WhatsApp (Link directo) */}
             <a 
-              href="https://wa.me/5493764366511?text=Hola!%20Necesito%20ayuda" 
+              href={waLink}
               target="_blank" 
               className="flex flex-col items-center text-center p-6 rounded-xl bg-card border shadow-sm hover:shadow-md transition-shadow cursor-pointer"
             >
@@ -41,14 +58,14 @@ export default function HelpPage() {
 
             {/* Email (Link directo) */}
             <a 
-              href="mailto:tiendaportostore@gmail.com" 
+              href={`mailto:${email}`} 
               className="flex flex-col items-center text-center p-6 rounded-xl bg-card border shadow-sm hover:shadow-md transition-shadow cursor-pointer"
             >
               <div className="p-3 rounded-full bg-primary/10 mb-4">
                 <Mail className="h-6 w-6 text-primary" />
               </div>
               <h3 className="font-medium mb-1">Email</h3>
-              <p className="text-sm text-muted-foreground break-all">tiendaportostore@gmail.com</p>
+              <p className="text-sm text-muted-foreground break-all">{email}</p>
             </a>
 
             {/* Ubicación */}
@@ -56,8 +73,10 @@ export default function HelpPage() {
               <div className="p-3 rounded-full bg-primary/10 mb-4">
                 <MapPin className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-medium mb-1">Sucursal</h3>
-              <p className="text-sm text-muted-foreground">Entre Rios 1420<br/>Posadas, Misiones</p>
+              <h3 className="font-medium mb-1">{storeName}</h3>
+              <p className="text-sm text-muted-foreground">
+                {addressLine1}{addressLine2 ? <><br/>{addressLine2}</> : null}
+              </p>
             </div>
           </div>
         </section>
@@ -94,7 +113,7 @@ export default function HelpPage() {
             <AccordionItem value="item-4">
               <AccordionTrigger>¿Tienen local físico?</AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
-                Sí, nuestro local está ubicado en Entre Rios 1420, Posadas, Misiones.
+                Sí, nuestro local está ubicado en {address}.
               </AccordionContent>
             </AccordionItem>
 
