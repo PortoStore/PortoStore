@@ -97,7 +97,7 @@ export async function sendOrderEmails(data: OrderEmailData) {
 
           ${paymentMethod === 'transfer' ? `
             <div style="background-color: #e6f7ff; padding: 15px; border-radius: 8px; border: 1px solid #91d5ff;">
-              <p style="margin: 0;"><strong>Importante:</strong> Si elegiste transferencia , por favor envialo respondiendo a este correo o por WhatsApp indicando tu número de pedido.</p>
+              <p style="margin: 0;"><strong>Importante:</strong> Si elegiste transferencia , por favor para agilizar la comprobacion de pago envialo a nuestro whatsapp.</p>
             </div>
           ` : ''}
           
