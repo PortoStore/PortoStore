@@ -7,11 +7,12 @@ import { supabase } from "@/lib/supabase";
 import { getCartItems, removeCartItem, clearCart } from "@/lib/utils";
 
 type ProductInfo = { product_id: number; name: string; image: string; priceNow: number };
-const SIZE_NAMES: Record<number, string> = {  2: "XS", 3: "S", 4: "M", 5: "L", 6: "XL", 7: "XXL", 8: "Sin talle" };
+type SizeRow = { size_id: number; name: string };
 
 export default function CartPage() {
   const [items, setItems] = useState(() => getCartItems());
   const [products, setProducts] = useState<Record<number, ProductInfo>>({});
+  const [sizeNames, setSizeNames] = useState<Record<number, string>>({});
 
   useEffect(() => {
     const onUpdate = () => setItems(getCartItems());
@@ -43,6 +44,23 @@ export default function CartPage() {
     })();
   }, [items]);
 
+  useEffect(() => {
+    const sizeIds = Array.from(new Set(items.map((i) => i.size_id)));
+    if (sizeIds.length === 0) {
+      setSizeNames({});
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from('sizes')
+        .select('size_id,name')
+        .in('size_id', sizeIds);
+      const dict: Record<number, string> = {};
+      ((data || []) as SizeRow[]).forEach(s => { dict[s.size_id] = s.name; });
+      setSizeNames(dict);
+    })();
+  }, [items]);
+
   const subtotal = useMemo(() => items.reduce((acc, i) => acc + (Number(i.price_snapshot) || 0) * (Number(i.qty) || 1), 0), [items]);
 
   function remove(product_id: number, size_id: number) {
@@ -68,7 +86,7 @@ export default function CartPage() {
               const image = p?.image || "https://images.unsplash.com/photo-1557821552-17105176677c?w=500&auto=format&fit=crop&q=60";
               const unit = Number(ci.price_snapshot) || 0;
               const total = unit * (Number(ci.qty) || 1);
-              const meta = `Talle: ${SIZE_NAMES[ci.size_id] || ci.size_id}`;
+              const meta = `Talle: ${sizeNames[ci.size_id] || ci.size_id}`;
               return (
                 <div key={`${ci.product_id}-${ci.size_id}-${idx}`} className="flex flex-col sm:flex-row gap-4 p-4 rounded-lg border">
                   <div className="flex w-full sm:w-auto items-start gap-4">

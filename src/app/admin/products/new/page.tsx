@@ -22,19 +22,13 @@ export default function NewProductPage() {
     // Data for selects
     type Category = { category_id: number; name: string };
     type Unit = { measurement_unit_id: number; name: string };
+    type SizeRow = { size_id: number; name: string };
     const [categories, setCategories] = useState<Category[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
     const [selectedSizeIds, setSelectedSizeIds] = useState<number[]>([]);
     const [sizeStock, setSizeStock] = useState<Record<number, number>>({});
-    const FIXED_SIZES: { size_id: number; name: string }[] = [
-        { size_id: 2, name: "XS" },
-        { size_id: 3, name: "S" },
-        { size_id: 4, name: "M" },
-        { size_id: 5, name: "L" },
-        { size_id: 6, name: "XL" },
-        { size_id: 7, name: "XXL" },
-        { size_id: 8, name: "Sin talle" },
-    ];
+    const [sizeKind, setSizeKind] = useState<"clothing" | "footwear">("clothing");
+    const [footwearRows, setFootwearRows] = useState<{ label: string; cm?: number | null; stock: number }[]>([{ label: "", cm: null, stock: 0 }]);
 
     const FIXED_PAYMENTS: { payment_type_id: number; name: string }[] = [
         { payment_type_id: 1, name: "Efectivo / Transferencia" },
@@ -72,6 +66,16 @@ export default function NewProductPage() {
         }
         fetchData();
     }, []);
+
+    const clothingSizes: SizeRow[] = [
+        { size_id: 2, name: "XS" },
+        { size_id: 3, name: "S" },
+        { size_id: 4, name: "M" },
+        { size_id: 5, name: "L" },
+        { size_id: 6, name: "XL" },
+        { size_id: 7, name: "XXL" },
+        { size_id: 8, name: "Sin talle" },
+    ];
 
     async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -129,16 +133,56 @@ export default function NewProductPage() {
                 if (priceError) throw priceError;
             }
 
-            const stockInserts: { product_id: number; size_id: number; stock: number }[] = FIXED_SIZES
-                .filter(s => selectedSizeIds.includes(s.size_id))
-                .map(size => {
-                    const stock = formData.get(`stock_${size.size_id}`);
-                    if (stock && Number(stock) >= 0) {
-                        return { product_id: productId, size_id: size.size_id, stock: Number(stock) };
+            let stockInserts: { product_id: number; size_id: number; stock: number }[] = [];
+            if (sizeKind === "clothing") {
+                stockInserts = clothingSizes
+                    .filter(s => selectedSizeIds.includes(s.size_id))
+                    .map(s => {
+                        const stock = formData.get(`stock_${s.size_id}`);
+                        if (stock !== null && stock !== undefined) {
+                            const n = Number(stock);
+                            if (!Number.isNaN(n) && n >= 0) {
+                                return { product_id: productId, size_id: s.size_id, stock: n };
+                            }
+                        }
+                        return null;
+                    }).filter((x): x is { product_id: number; size_id: number; stock: number } => Boolean(x));
+            } else {
+                const entries = footwearRows
+                    .map(r => ({ label: String(r.label || "").trim(), cm: r.cm, stock: Number(r.stock || 0) }))
+                    .filter(r => r.label.length > 0 && r.stock >= 0);
+                const names = Array.from(new Set(entries.map(e => e.label)));
+                const cmByName: Record<string, number | null> = {};
+                entries.forEach(e => { if (cmByName[e.label] === undefined) cmByName[e.label] = e.cm ?? null; });
+                const { data: existing } = await supabase
+                    .from('sizes')
+                    .select('size_id,name')
+                    .in('name', names);
+                const existingMap: Record<string, number> = {};
+                (existing || []).forEach((s: any) => { existingMap[String(s.name)] = Number(s.size_id); });
+                const missing = names.filter(n => existingMap[n] === undefined);
+                if (missing.length > 0) {
+                    const toInsert = missing.map(n => ({ name: n, value_cm: cmByName[n] ?? null }));
+                    await supabase.from('sizes').insert(toInsert);
+                    const { data: refetch } = await supabase
+                        .from('sizes')
+                        .select('size_id,name')
+                        .in('name', missing);
+                    (refetch || []).forEach((s: any) => { existingMap[String(s.name)] = Number(s.size_id); });
+                }
+                const toUpdate = names.filter(n => cmByName[n] !== null);
+                for (const n of toUpdate) {
+                    const v = cmByName[n];
+                    if (typeof v === 'number') {
+                        await supabase.from('sizes').update({ value_cm: v }).eq('name', n);
                     }
-                    return null;
-                })
-                .filter((x): x is { product_id: number; size_id: number; stock: number } => Boolean(x));
+                }
+                stockInserts = entries.map(e => ({
+                    product_id: productId,
+                    size_id: existingMap[e.label],
+                    stock: e.stock
+                })).filter(ins => typeof ins.size_id === 'number' && ins.size_id > 0);
+            }
 
             if (stockInserts.length > 0) {
                 const { error: stockError } = await supabase
@@ -317,43 +361,107 @@ export default function NewProductPage() {
                         <CardDescription>Seleccioná talles y definí cantidades.</CardDescription>
                     </CardHeader>
                     <CardContent className="grid gap-4">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            {FIXED_SIZES.map(s => {
-                                const checked = selectedSizeIds.includes(s.size_id);
-                                return (
-                                    <label key={s.size_id} className="flex items-center gap-2 text-sm">
-                                        <input
-                                            type="checkbox"
-                                            checked={checked}
-                                            onChange={() => {
-                                                setSelectedSizeIds(prev => checked ? prev.filter(x => x !== s.size_id) : [...prev, s.size_id]);
-                                            }}
-                                        />
-                                        <span>{s.name}</span>
-                                    </label>
-                                );
-                            })}
+                        <div className="grid gap-2">
+                            <Label>Tipo de talle</Label>
+                            <Select value={sizeKind} onValueChange={(v) => {
+                                const k = v as "clothing" | "footwear";
+                                setSizeKind(k);
+                                setSelectedSizeIds([]);
+                            }}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Elegí tipo de talle" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="clothing">Ropa</SelectItem>
+                                    <SelectItem value="footwear">Calzado</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <div className="grid gap-4">
-                            {FIXED_SIZES.filter(s => selectedSizeIds.includes(s.size_id)).map(size => (
-                                <div key={size.size_id} className="grid grid-cols-3 items-center gap-4">
-                                    <Label className="col-span-1">{size.name}</Label>
-                                    <Input
-                                        type="number"
-                                        name={`stock_${size.size_id}`}
-                                        placeholder="0"
-                                        onChange={(e) => {
-                                            const val = Number(e.target.value || 0);
-                                            setSizeStock(prev => ({ ...prev, [size.size_id]: val }));
-                                        }}
-                                        className="col-span-2"
-                                    />
+                        {sizeKind === "clothing" ? (
+                            <>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    {clothingSizes.map(s => {
+                                        const checked = selectedSizeIds.includes(s.size_id);
+                                        return (
+                                            <label key={s.size_id} className="flex items-center gap-2 text-sm">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    onChange={() => {
+                                                        setSelectedSizeIds(prev => checked ? prev.filter(x => x !== s.size_id) : [...prev, s.size_id]);
+                                                    }}
+                                                />
+                                                <span>{s.name}</span>
+                                            </label>
+                                        );
+                                    })}
                                 </div>
-                            ))}
-                            <div className="text-sm text-muted-foreground">
-                                Cantidad total: {selectedSizeIds.reduce((acc, id) => acc + (sizeStock[id] || 0), 0)}
-                            </div>
-                        </div>
+                                <div className="grid gap-4">
+                                    {clothingSizes.filter(s => selectedSizeIds.includes(s.size_id)).map(size => (
+                                        <div key={size.size_id} className="grid grid-cols-3 items-center gap-4">
+                                            <Label className="col-span-1">{size.name}</Label>
+                                            <Input
+                                                type="number"
+                                                name={`stock_${size.size_id}`}
+                                                placeholder="0"
+                                                onChange={(e) => {
+                                                    const val = Number(e.target.value || 0);
+                                                    setSizeStock(prev => ({ ...prev, [size.size_id]: val }));
+                                                }}
+                                                className="col-span-2"
+                                            />
+                                        </div>
+                                    ))}
+                                    <div className="text-sm text-muted-foreground">
+                                        Cantidad total: {selectedSizeIds.reduce((acc, id) => acc + (sizeStock[id] || 0), 0)}
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="grid gap-3">
+                                    {footwearRows.map((row, idx) => (
+                                        <div key={idx} className="grid grid-cols-6 items-center gap-3">
+                                            <Label className="col-span-1">Talle</Label>
+                                            <Input
+                                                className="col-span-1"
+                                                type="text"
+                                                value={row.label}
+                                                onChange={(e) => {
+                                                    const v = e.target.value;
+                                                    setFootwearRows(prev => prev.map((r, i) => i === idx ? { ...r, label: v } : r));
+                                                }}
+                                            />
+                                            <Label className="col-span-1">Cm</Label>
+                                            <Input
+                                                className="col-span-1"
+                                                type="number"
+                                                step="0.1"
+                                                value={row.cm ?? ""}
+                                                onChange={(e) => {
+                                                    const v = e.target.value.length ? Number(e.target.value) : null;
+                                                    setFootwearRows(prev => prev.map((r, i) => i === idx ? { ...r, cm: v } : r));
+                                                }}
+                                            />
+                                            <Label className="col-span-1">Stock</Label>
+                                            <Input
+                                                className="col-span-1"
+                                                type="number"
+                                                value={row.stock}
+                                                onChange={(e) => {
+                                                    const v = Number(e.target.value || 0);
+                                                    setFootwearRows(prev => prev.map((r, i) => i === idx ? { ...r, stock: v } : r));
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex gap-3">
+                                    <Button type="button" variant="outline" onClick={() => setFootwearRows(prev => [...prev, { label: "", cm: null, stock: 0 }])}>Agregar talle</Button>
+                                    <Button type="button" variant="outline" onClick={() => setFootwearRows(prev => prev.length > 1 ? prev.slice(0, -1) : prev)}>Quitar último</Button>
+                                </div>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
 

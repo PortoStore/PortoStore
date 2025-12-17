@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 
 type Category = { category_id: number; name: string };
 type Unit = { measurement_unit_id: number; name: string };
-type Size = { size_id: number; name: string };
+type SizeRow = { size_id: number; name: string };
 // type PaymentType = { payment_type_id: number; name: string };
 type Product = { product_id: number; name: string; description: string | null; sku_base: string | null; category_id: number | null; measurement_unit_id: number | null };
 
@@ -42,15 +42,8 @@ export default function EditProductPage() {
 
   const [selectedSizeIds, setSelectedSizeIds] = useState<number[]>([]);
   const [sizeStock, setSizeStock] = useState<Record<number, number>>({});
-  const FIXED_SIZES: { size_id: number; name: string }[] = [
-    { size_id: 2, name: "XS" },
-    { size_id: 3, name: "S" },
-    { size_id: 4, name: "M" },
-    { size_id: 5, name: "L" },
-    { size_id: 6, name: "XL" },
-    { size_id: 7, name: "XXL" },
-    { size_id: 8, name: "Sin talle" },
-  ];
+  const [sizeKind, setSizeKind] = useState<"clothing" | "footwear">("clothing");
+  const [footwearRows, setFootwearRows] = useState<{ label: string; cm?: number | null; stock: number }[]>([]);
   // const [price, setPrice] = useState<number>(0);
   // const [discount, setDiscount] = useState<number>(0);
 
@@ -65,6 +58,7 @@ export default function EditProductPage() {
       ]);
       if (cats.data) setCategories(cats.data);
       if (ms.data) setUnits(ms.data);
+      const clothingNames = new Set(["XS","S","M","L","XL","XXL","Sin talle"]);
 
       const { data: priceRowsInit } = await supabase
         .from("product_prices")
@@ -95,10 +89,27 @@ export default function EditProductPage() {
           const dict: Record<number, number> = {};
           sizeRows.forEach(r => { dict[r.size_id as number] = Number(r.stock) || 0; });
           setSizeStock(dict);
+          const { data: sizesData } = await supabase.from("sizes").select("size_id,name,value_cm").in("size_id", ids);
+          const rows = (sizesData || []) as SizeRow[];
+          const anyFootwear = rows.some(s => !clothingNames.has(s.name));
+          setSizeKind(anyFootwear ? "footwear" : "clothing");
+          if (anyFootwear) {
+            setFootwearRows(rows.map((s: any) => ({ label: s.name, cm: s.value_cm ?? null, stock: dict[s.size_id] || 0 })));
+          }
         }
       }
     })();
   }, [params]);
+
+  const clothingSizes: SizeRow[] = [
+    { size_id: 2, name: "XS" },
+    { size_id: 3, name: "S" },
+    { size_id: 4, name: "M" },
+    { size_id: 5, name: "L" },
+    { size_id: 6, name: "XL" },
+    { size_id: 7, name: "XXL" },
+    { size_id: 8, name: "Sin talle" },
+  ];
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -132,12 +143,51 @@ export default function EditProductPage() {
         .delete()
         .eq("product_id", product.product_id);
       if (delSizesError) throw delSizesError;
-      const inserts = selectedSizeIds.map(id => ({ product_id: product.product_id, size_id: id, stock: sizeStock[id] || 0 }));
-      if (inserts.length > 0) {
-        const { error: insSizesError } = await supabase
-          .from("product_sizes")
-          .insert(inserts);
-        if (insSizesError) throw insSizesError;
+      if (sizeKind === "clothing") {
+        const inserts = selectedSizeIds.map(id => ({ product_id: product.product_id, size_id: id, stock: sizeStock[id] || 0 }));
+        if (inserts.length > 0) {
+          const { error: insSizesError } = await supabase
+            .from("product_sizes")
+            .insert(inserts);
+          if (insSizesError) throw insSizesError;
+        }
+      } else {
+        const entries = footwearRows.map(r => ({ label: String(r.label || "").trim(), cm: r.cm, stock: Number(r.stock || 0) })).filter(r => r.label.length > 0 && r.stock >= 0);
+        const names = Array.from(new Set(entries.map(e => e.label)));
+        const { data: existing } = await supabase
+          .from('sizes')
+          .select('size_id,name')
+          .in('name', names);
+        const existingMap: Record<string, number> = {};
+        (existing || []).forEach((s: any) => { existingMap[String(s.name)] = Number(s.size_id); });
+        const missing = names.filter(n => existingMap[n] === undefined);
+        if (missing.length > 0) {
+          const cmByName: Record<string, number | null> = {};
+          entries.forEach(e => { if (cmByName[e.label] === undefined) cmByName[e.label] = e.cm ?? null; });
+          const toInsert = missing.map(n => ({ name: n, value_cm: cmByName[n] ?? null }));
+          await supabase.from('sizes').insert(toInsert);
+          const { data: refetch } = await supabase
+            .from('sizes')
+            .select('size_id,name')
+            .in('name', missing);
+          (refetch || []).forEach((s: any) => { existingMap[String(s.name)] = Number(s.size_id); });
+        }
+        const cmUpdateByName: Record<string, number | null> = {};
+        entries.forEach(e => { if (cmUpdateByName[e.label] === undefined) cmUpdateByName[e.label] = e.cm ?? null; });
+        for (const n of names) {
+          const v = cmUpdateByName[n];
+          if (typeof v === 'number') {
+            await supabase.from('sizes').update({ value_cm: v }).eq('name', n);
+          }
+        }
+        const inserts = entries.map(e => ({ product_id: product.product_id, size_id: existingMap[e.label], stock: e.stock }))
+          .filter(ins => typeof ins.size_id === 'number' && ins.size_id > 0);
+        if (inserts.length > 0) {
+          const { error: insSizesError } = await supabase
+            .from("product_sizes")
+            .insert(inserts);
+          if (insSizesError) throw insSizesError;
+        }
       }
 
       router.push("/admin/products");
@@ -237,31 +287,98 @@ export default function EditProductPage() {
             <CardDescription>Seleccioná talles y definí cantidades.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {FIXED_SIZES.map(s => {
-                const checked = selectedSizeIds.includes(s.size_id);
-                return (
-                  <label key={s.size_id} className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={checked} onChange={() => {
-                      setSelectedSizeIds(prev => checked ? prev.filter(x => x !== s.size_id) : [...prev, s.size_id]);
-                    }} />
-                    <span>{s.name}</span>
-                  </label>
-                );
-              })}
+            <div className="grid gap-2">
+              <Label>Tipo de talle</Label>
+              <Select value={sizeKind} onValueChange={(v) => {
+                const k = v as "clothing" | "footwear";
+                setSizeKind(k);
+                if (k === "clothing") {
+                  setSelectedSizeIds([]);
+                  setFootwearRows([]);
+                }
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Elegí tipo de talle" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="clothing">Ropa</SelectItem>
+                  <SelectItem value="footwear">Calzado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="grid gap-4">
-              {FIXED_SIZES.filter(s => selectedSizeIds.includes(s.size_id)).map(size => (
-                <div key={size.size_id} className="grid grid-cols-3 items-center gap-4">
-                  <Label className="col-span-1">{size.name}</Label>
-                  <Input type="number" value={sizeStock[size.size_id] || 0} onChange={(e) => {
-                    const val = Number(e.target.value || 0);
-                    setSizeStock(prev => ({ ...prev, [size.size_id]: val }));
-                  }} className="col-span-2" />
+            {sizeKind === "clothing" ? (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {clothingSizes.map(s => {
+                    const checked = selectedSizeIds.includes(s.size_id);
+                    return (
+                      <label key={s.size_id} className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={checked} onChange={() => {
+                          setSelectedSizeIds(prev => checked ? prev.filter(x => x !== s.size_id) : [...prev, s.size_id]);
+                        }} />
+                        <span>{s.name}</span>
+                      </label>
+                    );
+                  })}
                 </div>
-              ))}
-              <div className="text-sm text-muted-foreground">Cantidad total: {selectedSizeIds.reduce((acc, id) => acc + (sizeStock[id] || 0), 0)}</div>
-            </div>
+                <div className="grid gap-4">
+                  {clothingSizes.filter(s => selectedSizeIds.includes(s.size_id)).map(size => (
+                    <div key={size.size_id} className="grid grid-cols-3 items-center gap-4">
+                      <Label className="col-span-1">{size.name}</Label>
+                      <Input type="number" value={sizeStock[size.size_id] || 0} onChange={(e) => {
+                        const val = Number(e.target.value || 0);
+                        setSizeStock(prev => ({ ...prev, [size.size_id]: val }));
+                      }} className="col-span-2" />
+                    </div>
+                  ))}
+                  <div className="text-sm text-muted-foreground">Cantidad total: {selectedSizeIds.reduce((acc, id) => acc + (sizeStock[id] || 0), 0)}</div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid gap-3">
+                  {footwearRows.map((row, idx) => (
+                    <div key={idx} className="grid grid-cols-6 items-center gap-3">
+                      <Label className="col-span-1">Talle</Label>
+                      <Input
+                        className="col-span-1"
+                        type="text"
+                        value={row.label}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setFootwearRows(prev => prev.map((r, i) => i === idx ? { ...r, label: v } : r));
+                        }}
+                      />
+                      <Label className="col-span-1">Cm</Label>
+                      <Input
+                        className="col-span-1"
+                        type="number"
+                        step="0.1"
+                        value={row.cm ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value.length ? Number(e.target.value) : null;
+                          setFootwearRows(prev => prev.map((r, i) => i === idx ? { ...r, cm: v } : r));
+                        }}
+                      />
+                      <Label className="col-span-1">Stock</Label>
+                      <Input
+                        className="col-span-1"
+                        type="number"
+                        value={row.stock}
+                        onChange={(e) => {
+                          const v = Number(e.target.value || 0);
+                          setFootwearRows(prev => prev.map((r, i) => i === idx ? { ...r, stock: v } : r));
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-3">
+                  <Button type="button" variant="outline" onClick={() => setFootwearRows(prev => [...prev, { label: "", cm: null, stock: 0 }])}>Agregar talle</Button>
+                  <Button type="button" variant="outline" onClick={() => setFootwearRows(prev => prev.length > 1 ? prev.slice(0, -1) : prev)}>Quitar último</Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 

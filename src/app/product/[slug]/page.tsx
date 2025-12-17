@@ -24,15 +24,21 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     .eq('product_id', product.product_id);
   const stockBySizeId: Record<number, number> = {};
   (sizeRows || []).forEach((r: { size_id: number; stock: number }) => { stockBySizeId[r.size_id] = Number(r.stock) || 0; });
-  const sizes = [
-    { size_id: 2, name: 'XS' },
-    { size_id: 3, name: 'S' },
-    { size_id: 4, name: 'M' },
-    { size_id: 5, name: 'L' },
-    { size_id: 6, name: 'XL' },
-    { size_id: 7, name: 'XXL' },
-  ];
-  const hasAnySizeStock = (sizeRows || []).some((r: { size_id: number; stock: number }) => r.size_id !== 8);
+  const sizeIds = (sizeRows || []).map((r: { size_id: number }) => r.size_id);
+  const { data: sizesData } = await supabase
+    .from('sizes')
+    .select('size_id,name,value_cm')
+    .in('size_id', sizeIds);
+  const sizes = ((sizesData || []) as { size_id: number; name: string; value_cm?: number | null }[])
+    .sort((a, b) => {
+      const an = Number.parseFloat(a.name);
+      const bn = Number.parseFloat(b.name);
+      if (!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
+      const order: Record<string, number> = { XS: 1, S: 2, M: 3, L: 4, XL: 5, XXL: 6, 'Sin talle': 99 };
+      return (order[a.name] || 50) - (order[b.name] || 50);
+    })
+    .map(s => ({ size_id: s.size_id, name: s.name, value_cm: s.value_cm }));
+  const hasAnySizeStock = (sizeRows || []).some((r: { stock: number }) => Number(r.stock || 0) > 0);
 
   return (
     <div className="container mx-auto px-4 py-8">

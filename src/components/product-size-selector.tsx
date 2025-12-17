@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { addCartItem } from "@/lib/utils";
 
-type Size = { size_id: number; name: string };
+type Size = { size_id: number; name: string; value_cm?: number | null };
 
 export default function ProductSizeSelector({ sizes, stockBySizeId, productId, price }: { sizes: Size[]; stockBySizeId: Record<number, number>; productId: number; price: number }) {
   const [selectedSizeId, setSelectedSizeId] = useState<number | null>(null);
@@ -28,10 +28,15 @@ export default function ProductSizeSelector({ sizes, stockBySizeId, productId, p
               }}
               className={`p-3 rounded-lg border text-sm transition ${active ? 'border-primary' : ''} ${disabled ? 'border-destructive text-destructive' : 'hover:border-primary'}`}
             >
-              <span className="inline-flex items-center gap-1">
-                {s.name}
-                {disabled && <X className="size-3" />}
-              </span>
+              <div className="flex flex-col items-center gap-1">
+                <span className="inline-flex items-center gap-1">
+                  {s.name}
+                  {disabled && <X className="size-3" />}
+                </span>
+                {typeof s.value_cm === 'number' && !Number.isNaN(s.value_cm) && (
+                  <span className="text-xs text-muted-foreground">({s.value_cm} cm)</span>
+                )}
+              </div>
             </button>
           );
         })}
