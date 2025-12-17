@@ -3,11 +3,21 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import ProductCard from "@/components/product-card";
 import { getCategoriesWithProducts, getFeaturedProducts } from "@/services/products";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 
 export default async function Home() {
+  const supabase = await createClient();
+  const { data: storeSettings } = await supabase
+    .from("store_settings")
+    .select("hero_image_url")
+    .eq("id", 1)
+    .maybeSingle();
+  
+  const heroImage = storeSettings?.hero_image_url || "/imagenpage.jpg";
+
   const featuredProducts = await getFeaturedProducts();
   const categoriesWithProducts = await getCategoriesWithProducts();
   const visibleCategories = categoriesWithProducts.filter((c) => c.products.length > 0);
@@ -21,7 +31,7 @@ export default async function Home() {
             className="md:hidden relative w-full h-[60vh] flex items-center justify-center text-center"
         >
             <Image
-            src="/imagenpage.jpg"
+            src={heroImage}
             alt="Modelos vistiendo ropa de la nueva colección"
             fill
             className="object-cover"
@@ -56,7 +66,7 @@ export default async function Home() {
             <div className="w-1/2 relative h-full bg-muted/20 flex items-center justify-center">
                 <div className="relative w-[70%] h-[85%] rounded-2xl overflow-hidden shadow-2xl">
                     <Image
-                        src="/imagenpage.jpg"
+                        src={heroImage}
                         alt="Nueva Colección"
                         fill
                         className="object-cover hover:scale-105 transition-transform duration-700"

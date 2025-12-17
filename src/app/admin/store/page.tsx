@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Upload, X } from "lucide-react";
+import { CldUploadWidget } from "next-cloudinary";
+import Image from "next/image";
 
 type StoreSettings = {
   id: number;
@@ -20,6 +22,7 @@ type StoreSettings = {
   account?: string | null;
   cuit?: string | null;
   whatsapp?: string | null;
+  hero_image_url?: string | null;
 };
 
 export default function AdminStorePage() {
@@ -105,6 +108,43 @@ export default function AdminStorePage() {
           <div className="grid gap-2">
             <label className="text-sm font-medium">WhatsApp</label>
             <Input value={settings.whatsapp || ""} onChange={(e) => setSettings(s => ({ ...s, whatsapp: e.target.value }))} placeholder="+54 376 433-3760" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Imagen de Portada (Hero)</CardTitle>
+          <CardDescription>Esta imagen aparecerá en la página principal.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="flex flex-col gap-4">
+            {settings.hero_image_url && (
+              <div className="relative w-full max-w-sm aspect-[4/3] rounded-lg overflow-hidden border">
+                <Image src={settings.hero_image_url} alt="Hero" fill className="object-cover" />
+                <button
+                  onClick={() => setSettings(s => ({ ...s, hero_image_url: null }))}
+                  className="absolute top-2 right-2 bg-black/50 p-1 rounded-full text-white hover:bg-black/70"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+            <CldUploadWidget
+              uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "porto_store"}
+              onSuccess={(result: any) => {
+                if (result.info?.secure_url) {
+                  setSettings(s => ({ ...s, hero_image_url: result.info.secure_url }));
+                }
+              }}
+            >
+              {({ open }) => (
+                <Button type="button" variant="outline" onClick={() => open()}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  {settings.hero_image_url ? "Cambiar Imagen" : "Subir Imagen"}
+                </Button>
+              )}
+            </CldUploadWidget>
           </div>
         </CardContent>
       </Card>
