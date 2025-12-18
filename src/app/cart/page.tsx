@@ -91,8 +91,14 @@ export default function CartPage() {
                 <div key={`${ci.product_id}-${ci.size_id}-${idx}`} className="flex flex-col sm:flex-row gap-4 p-4 rounded-lg border">
                   <div className="flex w-full sm:w-auto items-start gap-4">
                     <div className="relative size-[80px] rounded-lg overflow-hidden">
-                      <Image src={image} alt={name} fill className="object-cover" />
-                    </div>
+                          <Image
+                            src={image}
+                            alt={name}
+                            fill
+                            sizes="80px"
+                            className="object-cover"
+                          />
+                        </div>
                     <div className="flex flex-1 flex-col justify-center">
                       <p className="font-medium">{name}</p>
                       <p className="text-sm text-muted-foreground">${unit.toFixed(2)}</p>

@@ -16,7 +16,7 @@ export default async function Home() {
     .eq("id", 1)
     .maybeSingle();
   
-  const heroImage = storeSettings?.hero_image_url || "/imagenpage.jpg";
+  const heroImage = storeSettings?.hero_image_url;
 
   const featuredProducts = await getFeaturedProducts();
   const categoriesWithProducts = await getCategoriesWithProducts();
@@ -50,7 +50,7 @@ export default async function Home() {
                 alt="PortoStore"
                 fill
                 className="object-contain object-center" 
-                priority
+            
             />
         </div>
         
@@ -70,7 +70,7 @@ export default async function Home() {
                         alt="Nueva Colección"
                         fill
                         className="object-cover hover:scale-105 transition-transform duration-700"
-                        priority
+                       
                     />
                 </div>
             </div>

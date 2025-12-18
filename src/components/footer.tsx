@@ -8,9 +8,9 @@ import { useEffect, useState } from "react";
 
 export default function Footer() {
   const pathname = usePathname();
-  const [address, setAddress] = useState<string>("Entre Ríos 1420, Posadas, Misiones");
-  // Actualicé el default al email profesional
-  const [email, setEmail] = useState<string>("ventas@tiendaportostore.com");
+  const [address, setAddress] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -20,10 +20,14 @@ export default function Footer() {
         .select("address,email")
         .eq("id", 1)
         .maybeSingle();
-      if (!cancelled && data) {
-        const d = data as { address?: string | null; email?: string | null };
-        if (d.address) setAddress(d.address);
-        if (d.email) setEmail(d.email);
+      
+      if (!cancelled) {
+        if (data) {
+          const d = data as { address?: string | null; email?: string | null };
+          if (d.address) setAddress(d.address);
+          if (d.email) setEmail(d.email);
+        }
+        setIsLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -32,6 +36,7 @@ export default function Footer() {
   if (pathname?.startsWith("/admin")) return null;
 
   const [line1, line2] = (() => {
+    if (!address) return ["", ""];
     const parts = address.split(",").map(s => s.trim());
     if (parts.length >= 2) return [parts[0], parts.slice(1).join(", ")];
     return [address, ""];
@@ -109,10 +114,19 @@ export default function Footer() {
             
             <div className="flex gap-3 items-start">
               <MapPin className="size-5 text-primary shrink-0 mt-0.5" /> 
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground w-full">
                 <p className="font-medium text-foreground mb-1">Sucursal Posadas</p>
-                <p>{line1}</p>
-                {line2 && <p>{line2}</p>}
+                {isLoading ? (
+                  <div className="space-y-2 mt-1">
+                    <div className="h-4 w-3/4 bg-muted animate-pulse rounded"></div>
+                    <div className="h-4 w-1/2 bg-muted animate-pulse rounded"></div>
+                  </div>
+                ) : (
+                  <>
+                    <p>{line1}</p>
+                    {line2 && <p>{line2}</p>}
+                  </>
+                )}
               </div>
             </div>
 
@@ -127,9 +141,13 @@ export default function Footer() {
 
             <div className="flex gap-3 items-center pt-2">
                <Mail className="size-5 text-primary shrink-0" />
-               <a href={`mailto:${email}`} className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">
-                 {email}
-               </a>
+               {isLoading ? (
+                  <div className="h-4 w-48 bg-muted animate-pulse rounded"></div>
+               ) : (
+                 <a href={`mailto:${email}`} className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">
+                   {email || "ventas@tiendaportostore.com"}
+                 </a>
+               )}
             </div>
           </div>
         

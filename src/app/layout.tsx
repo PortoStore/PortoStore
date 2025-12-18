@@ -12,8 +12,18 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Porto Store",
-  description: "Moda y accesorios",
+  title: {
+    template: "%s | Porto Store",
+    default: "Porto Store - Moda y Accesorios",
+  },
+  description: "Descubre la última colección de moda y accesorios en Porto Store.",
+  openGraph: {
+    title: "Porto Store",
+    description: "Moda y accesorios de calidad.",
+    siteName: "Porto Store",
+    locale: "es_AR",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
