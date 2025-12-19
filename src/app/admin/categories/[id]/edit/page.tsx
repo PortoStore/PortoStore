@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { useAdminNavigation } from "@/components/admin/admin-navigation-provider";
 import CancelButton from "@/components/admin/cancel-button";
 
 type Category = { category_id: number; name: string };
@@ -20,8 +21,19 @@ export default function EditCategoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<Category | null>(null);
   const [name, setName] = useState("");
+  const { isDirty, setIsDirty } = useAdminNavigation();
 
-  const isDirty = category ? name !== category.name : false;
+  const localIsDirty = category ? name !== category.name : false;
+
+  useEffect(() => {
+    setIsDirty(localIsDirty);
+  }, [localIsDirty, setIsDirty]);
+
+  // Clear dirty state on unmount
+  useEffect(() => {
+    return () => setIsDirty(false);
+  }, [setIsDirty]);
+
   useUnsavedChanges(isDirty);
 
   useEffect(() => {

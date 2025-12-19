@@ -145,7 +145,7 @@ export default function Footer() {
                   <div className="h-4 w-48 bg-muted animate-pulse rounded"></div>
                ) : (
                  <a href={`mailto:${email}`} className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">
-                   {email || "ventas@tiendaportostore.com"}
+                   {email }
                  </a>
                )}
             </div>

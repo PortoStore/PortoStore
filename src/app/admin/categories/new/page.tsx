@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { useAdminNavigation } from "@/components/admin/admin-navigation-provider";
 import CancelButton from "@/components/admin/cancel-button";
 
 export default function NewCategoryPage() {
@@ -15,9 +16,14 @@ export default function NewCategoryPage() {
     const supabase = createClient();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isDirty, setIsDirty] = useState(false);
+    const { isDirty, setIsDirty } = useAdminNavigation();
 
     useUnsavedChanges(isDirty);
+
+    // Clear dirty state on unmount
+    useEffect(() => {
+        return () => setIsDirty(false);
+    }, [setIsDirty]);
 
     async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();

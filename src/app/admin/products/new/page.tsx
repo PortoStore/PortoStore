@@ -13,6 +13,7 @@ import Image from "next/image";
 import { X } from "lucide-react";
 import { CldUploadWidget } from "next-cloudinary";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { useAdminNavigation } from "@/components/admin/admin-navigation-provider";
 import CancelButton from "@/components/admin/cancel-button";
 
 export default function NewProductPage() {
@@ -43,9 +44,14 @@ export default function NewProductPage() {
     const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
     const [lastUploadUrl, setLastUploadUrl] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [isDirty, setIsDirty] = useState(false);
+    const { isDirty, setIsDirty } = useAdminNavigation();
 
     useUnsavedChanges(isDirty);
+
+    // Clear dirty state on unmount
+    useEffect(() => {
+        return () => setIsDirty(false);
+    }, [setIsDirty]);
 
     function removeImage(index: number) {
         setSelectedFiles((prev) => prev.filter((_, i) => i !== index));

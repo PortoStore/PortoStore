@@ -11,10 +11,10 @@ export default async function HelpPage() {
     .eq("id", 1)
     .maybeSingle();
   const settings = (data as { store_name?: string | null; address?: string | null; phone?: string | null; email?: string | null; whatsapp?: string | null } | null) || null;
-  const phone = settings?.phone || "+54 9 376 436-6511";
-  const email = settings?.email || "ventas@tiendaportostore.com";
-  const address = settings?.address || "Entre Rios 1420, Posadas, Misiones";
-  const storeName = settings?.store_name || "Sucursal Posadas";
+  const phone = settings?.phone || "";
+  const email = settings?.email || "";
+  const address = settings?.address || "";
+  const storeName = settings?.store_name || "";
   const addressParts = address.split(",").map(s => s.trim());
   const addressLine1 = addressParts[0] || address;
   const addressLine2 = addressParts.slice(1).join(", ");

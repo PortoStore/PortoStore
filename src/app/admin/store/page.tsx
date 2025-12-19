@@ -11,6 +11,7 @@ import { CldUploadWidget } from "next-cloudinary";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { useAdminNavigation } from "@/components/admin/admin-navigation-provider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,9 +46,14 @@ export default function AdminStorePage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<boolean>(false);
-  const [isDirty, setIsDirty] = useState(false);
+  const { isDirty, setIsDirty } = useAdminNavigation();
 
   useUnsavedChanges(isDirty);
+
+  // Clear dirty state on unmount or when leaving properly
+  useEffect(() => {
+    return () => setIsDirty(false);
+  }, [setIsDirty]);
 
   useEffect(() => {
     let cancelled = false;

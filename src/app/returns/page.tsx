@@ -27,10 +27,10 @@ export default async function ReturnsPage() {
             </p>
             <ol className="list-decimal pl-6 space-y-2 text-muted-foreground">
               <li>
-                En nuestro local en <strong>{settings?.address || "Entre Ríos 1420, Posadas, Misiones"}</strong>.
+                En nuestro local en <strong>{settings?.address || ""}</strong>.
               </li>
               <li>
-                Desde tu domicilio, escribiendo a la línea de atención al cliente <strong>{settings?.phone || "376 436-6511"}</strong> ¡Nosotros te atenderemos en breve!
+                Desde tu domicilio, escribiendo a la línea de atención al cliente <strong>{settings?.phone || ""}</strong> ¡Nosotros te atenderemos en breve!
               </li>
             </ol>
           </div>

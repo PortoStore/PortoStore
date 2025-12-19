@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { useAdminNavigation } from "@/components/admin/admin-navigation-provider";
 import CancelButton from "@/components/admin/cancel-button";
 
 type Category = { category_id: number; name: string };
@@ -46,9 +47,14 @@ export default function EditProductPage() {
   const [sizeStock, setSizeStock] = useState<Record<number, number>>({});
   const [sizeKind, setSizeKind] = useState<"clothing" | "footwear">("clothing");
   const [footwearRows, setFootwearRows] = useState<{ label: string; cm?: number | null; stock: number }[]>([]);
-  const [isDirty, setIsDirty] = useState(false);
+  const { isDirty, setIsDirty } = useAdminNavigation();
   
   useUnsavedChanges(isDirty);
+
+  // Clear dirty state on unmount
+  useEffect(() => {
+    return () => setIsDirty(false);
+  }, [setIsDirty]);
 
   // const [price, setPrice] = useState<number>(0);
   // const [discount, setDiscount] = useState<number>(0);
