@@ -5,6 +5,7 @@ import { Plus, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import DeleteConfirmButton from "@/components/admin/delete-confirm-button";
 
 export const dynamic = 'force-dynamic';
 
@@ -83,10 +84,14 @@ export default async function AdminCategoriesPage() {
                                         <Link href={`/admin/categories/${category.category_id}/edit`}>
                                             <Button variant="ghost" size="sm">Editar</Button>
                                         </Link>
-                                        <form action={deleteCategoryAction} className="inline-flex ml-2">
-                                            <input type="hidden" name="category_id" value={category.category_id} />
-                                            <Button type="submit" variant="destructive" size="sm">Eliminar</Button>
-                                        </form>
+                                        <DeleteConfirmButton 
+                                            id={category.category_id} 
+                                            action={deleteCategoryAction} 
+                                            inputName="category_id" 
+                                            className="ml-2"
+                                            title="¿Eliminar categoría?"
+                                            description={`¿Estás seguro de que querés eliminar "${category.name}"? Los productos en esta categoría se quedarán sin categoría.`}
+                                        />
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -126,10 +131,14 @@ export default async function AdminCategoriesPage() {
                                 <Link href={`/admin/categories/${category.category_id}/edit`}>
                                     <Button variant="outline" className="w-full">Editar</Button>
                                 </Link>
-                                <form action={deleteCategoryAction} className="mt-2">
-                                    <input type="hidden" name="category_id" value={category.category_id} />
-                                    <Button type="submit" variant="destructive" className="w-full">Eliminar</Button>
-                                </form>
+                                <DeleteConfirmButton 
+                                    id={category.category_id} 
+                                    action={deleteCategoryAction} 
+                                    inputName="category_id" 
+                                    className="w-full mt-2"
+                                    title="¿Eliminar categoría?"
+                                    description={`¿Estás seguro de que querés eliminar "${category.name}"?`}
+                                />
                             </CardContent>
                         </Card>
                     ))

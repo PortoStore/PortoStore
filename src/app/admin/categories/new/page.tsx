@@ -7,12 +7,17 @@ import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import CancelButton from "@/components/admin/cancel-button";
 
 export default function NewCategoryPage() {
     const router = useRouter();
     const supabase = createClient();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isDirty, setIsDirty] = useState(false);
+
+    useUnsavedChanges(isDirty);
 
     async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -57,7 +62,7 @@ export default function NewCategoryPage() {
                     <CardDescription>Ingresá el nombre de la nueva categoría.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={onSubmit} className="grid gap-4">
+                    <form onSubmit={onSubmit} onChange={() => setIsDirty(true)} className="grid gap-4">
                         <div className="grid gap-2">
                             <Label htmlFor="name">Nombre</Label>
                             <Input id="name" name="name" placeholder="ej.: Remeras" required />
@@ -70,9 +75,7 @@ export default function NewCategoryPage() {
                         )}
 
                         <div className="flex justify-end gap-4">
-                            <Button type="button" variant="outline" onClick={() => router.back()}>
-                                Cancelar
-                            </Button>
+                            <CancelButton isDirty={isDirty} />
                             <Button type="submit" disabled={loading}>
                                 {loading ? "Creando..." : "Crear Categoría"}
                             </Button>

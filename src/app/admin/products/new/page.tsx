@@ -12,6 +12,8 @@ import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { CldUploadWidget } from "next-cloudinary";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import CancelButton from "@/components/admin/cancel-button";
 
 export default function NewProductPage() {
     const router = useRouter();
@@ -41,15 +43,21 @@ export default function NewProductPage() {
     const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
     const [lastUploadUrl, setLastUploadUrl] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isDirty, setIsDirty] = useState(false);
+
+    useUnsavedChanges(isDirty);
+
     function removeImage(index: number) {
         setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
         setPreviews((prev) => prev.filter((_, i) => i !== index));
         setUploadedImageUrls((prev) => prev.filter((_, i) => i !== index));
+        setIsDirty(true);
     }
     function clearAllImages() {
         setSelectedFiles([]);
         setPreviews([]);
         setUploadedImageUrls([]);
+        setIsDirty(true);
     }
 
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "porto_store"
@@ -207,7 +215,7 @@ export default function NewProductPage() {
             <div className="flex items-center justify-between">
                 <h1 className="text-lg font-semibold md:text-2xl">Nuevo Producto</h1>
             </div>
-            <form onSubmit={onSubmit} className="grid gap-4">
+            <form onSubmit={onSubmit} onChange={() => setIsDirty(true)} className="grid gap-4">
                 <Card>
                     <CardHeader>
                         <CardTitle>Información Básica</CardTitle>
@@ -228,7 +236,7 @@ export default function NewProductPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="category_id">Categoría</Label>
-                                <Select name="category_id">
+                                <Select name="category_id" onValueChange={() => setIsDirty(true)}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Seleccioná categoría" />
                                     </SelectTrigger>
@@ -243,7 +251,7 @@ export default function NewProductPage() {
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="measurement_unit_id">Unidad</Label>
-                                <Select name="measurement_unit_id">
+                                <Select name="measurement_unit_id" onValueChange={() => setIsDirty(true)}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Seleccioná unidad" />
                                     </SelectTrigger>
@@ -271,6 +279,7 @@ export default function NewProductPage() {
                     setLastUploadUrl(url);
                     setUploadedImageUrls(prev => [...prev, url].slice(0, 3));
                     setPreviews(prev => [...prev, url].slice(0, 3));
+                    setIsDirty(true);
                 }
             }}
         >
@@ -367,6 +376,7 @@ export default function NewProductPage() {
                                 const k = v as "clothing" | "footwear";
                                 setSizeKind(k);
                                 setSelectedSizeIds([]);
+                                setIsDirty(true);
                             }}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Elegí tipo de talle" />
@@ -457,8 +467,8 @@ export default function NewProductPage() {
                                     ))}
                                 </div>
                                 <div className="flex gap-3">
-                                    <Button type="button" variant="outline" onClick={() => setFootwearRows(prev => [...prev, { label: "", cm: null, stock: 0 }])}>Agregar talle</Button>
-                                    <Button type="button" variant="outline" onClick={() => setFootwearRows(prev => prev.length > 1 ? prev.slice(0, -1) : prev)}>Quitar último</Button>
+                                    <Button type="button" variant="outline" onClick={() => { setFootwearRows(prev => [...prev, { label: "", cm: null, stock: 0 }]); setIsDirty(true); }}>Agregar talle</Button>
+                                    <Button type="button" variant="outline" onClick={() => { setFootwearRows(prev => prev.length > 1 ? prev.slice(0, -1) : prev); setIsDirty(true); }}>Quitar último</Button>
                                 </div>
                             </>
                         )}
@@ -472,8 +482,10 @@ export default function NewProductPage() {
                 )}
 
                 <div className="flex justify-end gap-4">
-                    <Button type="button" variant="outline" onClick={() => router.back()}>Cancelar</Button>
-                    <Button type="submit" disabled={loading}>{loading ? "Creando..." : "Crear Producto"}</Button>
+                    <CancelButton isDirty={isDirty} />
+                    <Button type="submit" disabled={loading}>
+                        {loading ? "Guardando..." : "Guardar Producto"}
+                    </Button>
                 </div>
             </form>
         </div>

@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import CancelButton from "@/components/admin/cancel-button";
 
 type Category = { category_id: number; name: string };
 
@@ -18,6 +20,9 @@ export default function EditCategoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<Category | null>(null);
   const [name, setName] = useState("");
+
+  const isDirty = category ? name !== category.name : false;
+  useUnsavedChanges(isDirty);
 
   useEffect(() => {
     const id = Number(params?.id);
@@ -75,7 +80,7 @@ export default function EditCategoryPage() {
         </Card>
 
         <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => router.back()}>Cancelar</Button>
+          <CancelButton isDirty={isDirty} />
           <Button type="submit" disabled={loading}>{loading ? "Guardando..." : "Guardar"}</Button>
         </div>
       </form>

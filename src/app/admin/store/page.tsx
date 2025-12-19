@@ -9,6 +9,19 @@ import Link from "next/link";
 import { ChevronLeft, Upload, X } from "lucide-react";
 import { CldUploadWidget } from "next-cloudinary";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type StoreSettings = {
   id: number;
@@ -27,10 +40,14 @@ type StoreSettings = {
 
 export default function AdminStorePage() {
   const supabase = createClient();
+  const router = useRouter();
   const [settings, setSettings] = useState<StoreSettings>({ id: 1 });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<boolean>(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  useUnsavedChanges(isDirty);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +75,7 @@ export default function AdminStorePage() {
         .upsert([row], { onConflict: "id" });
       if (upErr) throw upErr;
       setSaved(true);
+      setIsDirty(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar");
     } finally {
@@ -67,14 +85,33 @@ export default function AdminStorePage() {
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4" onChange={() => setIsDirty(true)}>
       <div className="flex items-center gap-4">
-        <Link href="/admin">
-          <Button variant="outline" size="icon" className="h-9 w-9">
-            <ChevronLeft className="h-5 w-5" />
-            <span className="sr-only">Volver</span>
-          </Button>
-        </Link>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" size="icon" className="h-9 w-9" onClick={(e) => {
+               if (!isDirty) {
+                 e.preventDefault(); // Prevent dialog trigger
+                 router.push("/admin");
+               }
+            }}>
+              <ChevronLeft className="h-5 w-5" />
+              <span className="sr-only">Volver</span>
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Descartar cambios?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tenés cambios sin guardar. Si salís ahora, se perderán.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => router.push("/admin")}>Descartar y salir</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <h1 className="text-lg font-semibold md:text-2xl">Mi tienda</h1>
         <div className="ml-auto">
           <Button onClick={onSave} disabled={loading}>
@@ -123,7 +160,7 @@ export default function AdminStorePage() {
               <div className="relative w-full max-w-sm aspect-[4/3] rounded-lg overflow-hidden border">
                 <Image src={settings.hero_image_url} alt="Hero" fill className="object-cover" />
                 <button
-                  onClick={() => setSettings(s => ({ ...s, hero_image_url: null }))}
+                  onClick={() => { setSettings(s => ({ ...s, hero_image_url: null })); setIsDirty(true); }}
                   className="absolute top-2 right-2 bg-black/50 p-1 rounded-full text-white hover:bg-black/70"
                 >
                   <X size={16} />
@@ -135,6 +172,7 @@ export default function AdminStorePage() {
               onSuccess={(result: any) => {
                 if (result.info?.secure_url) {
                   setSettings(s => ({ ...s, hero_image_url: result.info.secure_url }));
+                  setIsDirty(true);
                 }
               }}
             >

@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import CancelButton from "@/components/admin/cancel-button";
 
 type Category = { category_id: number; name: string };
 type Unit = { measurement_unit_id: number; name: string };
@@ -44,6 +46,10 @@ export default function EditProductPage() {
   const [sizeStock, setSizeStock] = useState<Record<number, number>>({});
   const [sizeKind, setSizeKind] = useState<"clothing" | "footwear">("clothing");
   const [footwearRows, setFootwearRows] = useState<{ label: string; cm?: number | null; stock: number }[]>([]);
+  const [isDirty, setIsDirty] = useState(false);
+  
+  useUnsavedChanges(isDirty);
+
   // const [price, setPrice] = useState<number>(0);
   // const [discount, setDiscount] = useState<number>(0);
 
@@ -204,7 +210,7 @@ export default function EditProductPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold md:text-2xl">Editar Producto</h1>
       </div>
-      <form onSubmit={onSubmit} className="grid gap-4">
+      <form onSubmit={onSubmit} onChange={() => setIsDirty(true)} className="grid gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Información Básica</CardTitle>
@@ -225,7 +231,7 @@ export default function EditProductPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="category_id">Categoría</Label>
-                <Select value={categoryId ? String(categoryId) : undefined} onValueChange={(v) => setCategoryId(Number(v))}>
+                <Select value={categoryId ? String(categoryId) : undefined} onValueChange={(v) => { setCategoryId(Number(v)); setIsDirty(true); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccioná categoría" />
                   </SelectTrigger>
@@ -238,7 +244,7 @@ export default function EditProductPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="measurement_unit_id">Unidad</Label>
-                <Select value={unitId ? String(unitId) : undefined} onValueChange={(v) => setUnitId(Number(v))}>
+                <Select value={unitId ? String(unitId) : undefined} onValueChange={(v) => { setUnitId(Number(v)); setIsDirty(true); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccioná unidad" />
                   </SelectTrigger>
@@ -292,6 +298,7 @@ export default function EditProductPage() {
               <Select value={sizeKind} onValueChange={(v) => {
                 const k = v as "clothing" | "footwear";
                 setSizeKind(k);
+                setIsDirty(true);
                 if (k === "clothing") {
                   setSelectedSizeIds([]);
                   setFootwearRows([]);
@@ -374,8 +381,8 @@ export default function EditProductPage() {
                   ))}
                 </div>
                 <div className="flex gap-3">
-                  <Button type="button" variant="outline" onClick={() => setFootwearRows(prev => [...prev, { label: "", cm: null, stock: 0 }])}>Agregar talle</Button>
-                  <Button type="button" variant="outline" onClick={() => setFootwearRows(prev => prev.length > 1 ? prev.slice(0, -1) : prev)}>Quitar último</Button>
+                  <Button type="button" variant="outline" onClick={() => { setFootwearRows(prev => [...prev, { label: "", cm: null, stock: 0 }]); setIsDirty(true); }}>Agregar talle</Button>
+                  <Button type="button" variant="outline" onClick={() => { setFootwearRows(prev => prev.length > 1 ? prev.slice(0, -1) : prev); setIsDirty(true); }}>Quitar último</Button>
                 </div>
               </>
             )}
@@ -385,7 +392,7 @@ export default function EditProductPage() {
         {error && <div className="text-sm text-red-500 font-medium">{error}</div>}
 
         <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => router.back()}>Cancelar</Button>
+          <CancelButton isDirty={isDirty} />
           <Button type="submit" disabled={loading}>{loading ? "Guardando..." : "Guardar"}</Button>
         </div>
       </form>

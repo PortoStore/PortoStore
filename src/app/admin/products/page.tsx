@@ -5,6 +5,7 @@ import { Plus, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import DeleteConfirmButton from "@/components/admin/delete-confirm-button";
 
 export const dynamic = 'force-dynamic';
 
@@ -133,10 +134,14 @@ export default async function AdminProductsPage() {
                                         <Link href={`/admin/products/${product.product_id}/edit`}>
                                             <Button variant="ghost" size="sm">Editar / Stock</Button>
                                         </Link>
-                                        <form action={deleteProductAction} className="inline-flex ml-2">
-                                            <input type="hidden" name="product_id" value={product.product_id} />
-                                            <Button type="submit" variant="destructive" size="sm">Eliminar</Button>
-                                        </form>
+                                        <DeleteConfirmButton 
+                                            id={product.product_id} 
+                                            action={deleteProductAction} 
+                                            inputName="product_id" 
+                                            className="ml-2"
+                                            title="¿Eliminar producto?"
+                                            description={`¿Estás seguro de que querés eliminar "${product.name}"? Esta acción borrará el producto, su stock y sus imágenes.`}
+                                        />
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -194,10 +199,14 @@ export default async function AdminProductsPage() {
                                     <Link href={`/admin/products/${product.product_id}/edit`}>
                                         <Button variant="outline" className="w-full">Editar / Stock</Button>
                                     </Link>
-                                    <form action={deleteProductAction} className="mt-2">
-                                        <input type="hidden" name="product_id" value={product.product_id} />
-                                        <Button type="submit" variant="destructive" className="w-full">Eliminar</Button>
-                                    </form>
+                                    <DeleteConfirmButton 
+                                        id={product.product_id} 
+                                        action={deleteProductAction} 
+                                        inputName="product_id" 
+                                        className="w-full mt-2"
+                                        title="¿Eliminar producto?"
+                                        description={`¿Estás seguro de que querés eliminar "${product.name}"?`}
+                                    />
                                 </div>
                             </CardContent>
                         </Card>
