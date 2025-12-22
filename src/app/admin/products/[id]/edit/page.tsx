@@ -29,12 +29,11 @@ export default function EditProductPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const FIXED_PAYMENTS: { payment_type_id: number; name: string }[] = [
-    { payment_type_id: 1, name: "Efectivo" },
-    { payment_type_id: 2, name: "Tarjeta de Crédito" },
-    { payment_type_id: 3, name: "Transferencia" },
+    { payment_type_id: 1, name: "Efectivo / Transferencia" },
+    { payment_type_id: 2, name: "Tarjeta de Crédito / Débito" },
   ];
   const [selectedPaymentIds, setSelectedPaymentIds] = useState<number[]>([]);
-  const [paymentPrices, setPaymentPrices] = useState<Record<number, number>>({});
+  const [paymentPrices, setPaymentPrices] = useState<Record<number, number | string>>({});
   // const [sizes, setSizes] = useState<Size[]>([]);
 
   const [name, setName] = useState("");
@@ -44,9 +43,9 @@ export default function EditProductPage() {
   const [unitId, setUnitId] = useState<number | null>(null);
 
   const [selectedSizeIds, setSelectedSizeIds] = useState<number[]>([]);
-  const [sizeStock, setSizeStock] = useState<Record<number, number>>({});
+  const [sizeStock, setSizeStock] = useState<Record<number, number | string>>({});
   const [sizeKind, setSizeKind] = useState<"clothing" | "footwear">("clothing");
-  const [footwearRows, setFootwearRows] = useState<{ label: string; cm?: number | null; stock: number }[]>([]);
+  const [footwearRows, setFootwearRows] = useState<{ label: string; cm?: number | null; stock: number | string }[]>([]);
   const { isDirty, setIsDirty } = useAdminNavigation();
   
   useUnsavedChanges(isDirty);
@@ -76,10 +75,20 @@ export default function EditProductPage() {
         .from("product_prices")
         .select("payment_type_id,price")
         .eq("product_id", id);
-      const paymentIds = (priceRowsInit || []).map(r => r.payment_type_id as number);
-      setSelectedPaymentIds(paymentIds);
       const priceDict: Record<number, number> = {};
-      (priceRowsInit || []).forEach(r => { priceDict[r.payment_type_id as number] = Number(r.price) || 0; });
+      const foundIds = new Set<number>();
+
+      (priceRowsInit || []).forEach(r => {
+        const pid = r.payment_type_id as number;
+        const price = Number(r.price) || 0;
+        
+        // Skip legacy transfer price (id=3) if present, as requested
+        if (pid === 3) return;
+
+        priceDict[pid] = price;
+        foundIds.add(pid);
+      });
+      setSelectedPaymentIds(Array.from(foundIds));
       setPaymentPrices(priceDict);
 
       if (prod.data) {
@@ -106,7 +115,9 @@ export default function EditProductPage() {
           const anyFootwear = rows.some(s => !clothingNames.has(s.name));
           setSizeKind(anyFootwear ? "footwear" : "clothing");
           if (anyFootwear) {
-            setFootwearRows(rows.map((s: any) => ({ label: s.name, cm: s.value_cm ?? null, stock: dict[s.size_id] || 0 })));
+            setFootwearRows(rows
+              .sort((a: any, b: any) => (a.value_cm || 0) - (b.value_cm || 0))
+              .map((s: any) => ({ label: s.name, cm: s.value_cm ?? null, stock: dict[s.size_id] || 0 })));
           }
         }
       }
@@ -156,7 +167,7 @@ export default function EditProductPage() {
         .eq("product_id", product.product_id);
       if (delSizesError) throw delSizesError;
       if (sizeKind === "clothing") {
-        const inserts = selectedSizeIds.map(id => ({ product_id: product.product_id, size_id: id, stock: sizeStock[id] || 0 }));
+        const inserts = selectedSizeIds.map(id => ({ product_id: product.product_id, size_id: id, stock: Number(sizeStock[id] || 0) }));
         if (inserts.length > 0) {
           const { error: insSizesError } = await supabase
             .from("product_sizes")
@@ -286,7 +297,7 @@ export default function EditProductPage() {
               {FIXED_PAYMENTS.filter(pt => selectedPaymentIds.includes(pt.payment_type_id)).map(pt => (
                 <div key={pt.payment_type_id} className="grid grid-cols-3 items-center gap-4">
                   <Label className="col-span-1">{pt.name}</Label>
-                  <Input type="number" step="0.01" value={paymentPrices[pt.payment_type_id] || 0} onChange={(e) => setPaymentPrices(prev => ({ ...prev, [pt.payment_type_id]: Number(e.target.value || 0) }))} className="col-span-2" />
+                  <Input type="number" step="0.01" value={paymentPrices[pt.payment_type_id] === undefined ? "" : paymentPrices[pt.payment_type_id]} onChange={(e) => setPaymentPrices(prev => ({ ...prev, [pt.payment_type_id]: e.target.value === "" ? "" : Number(e.target.value) }))} className="col-span-2" />
                 </div>
               ))}
             </div>
@@ -338,13 +349,13 @@ export default function EditProductPage() {
                   {clothingSizes.filter(s => selectedSizeIds.includes(s.size_id)).map(size => (
                     <div key={size.size_id} className="grid grid-cols-3 items-center gap-4">
                       <Label className="col-span-1">{size.name}</Label>
-                      <Input type="number" value={sizeStock[size.size_id] || 0} onChange={(e) => {
-                        const val = Number(e.target.value || 0);
+                      <Input type="number" value={sizeStock[size.size_id] === undefined ? "" : sizeStock[size.size_id]} onChange={(e) => {
+                        const val = e.target.value === "" ? "" : Number(e.target.value);
                         setSizeStock(prev => ({ ...prev, [size.size_id]: val }));
                       }} className="col-span-2" />
                     </div>
                   ))}
-                  <div className="text-sm text-muted-foreground">Cantidad total: {selectedSizeIds.reduce((acc, id) => acc + (sizeStock[id] || 0), 0)}</div>
+                  <div className="text-sm text-muted-foreground">Cantidad total: {selectedSizeIds.reduce((acc, id) => acc + (Number(sizeStock[id]) || 0), 0)}</div>
                 </div>
               </>
             ) : (
@@ -377,9 +388,9 @@ export default function EditProductPage() {
                       <Input
                         className="col-span-1"
                         type="number"
-                        value={row.stock}
+                        value={row.stock === "" ? "" : row.stock}
                         onChange={(e) => {
-                          const v = Number(e.target.value || 0);
+                          const v = e.target.value === "" ? "" : Number(e.target.value);
                           setFootwearRows(prev => prev.map((r, i) => i === idx ? { ...r, stock: v } : r));
                         }}
                       />
@@ -388,7 +399,7 @@ export default function EditProductPage() {
                 </div>
                 <div className="flex gap-3">
                   <Button type="button" variant="outline" onClick={() => { setFootwearRows(prev => [...prev, { label: "", cm: null, stock: 0 }]); setIsDirty(true); }}>Agregar talle</Button>
-                  <Button type="button" variant="outline" onClick={() => { setFootwearRows(prev => prev.length > 1 ? prev.slice(0, -1) : prev); setIsDirty(true); }}>Quitar último</Button>
+                  <Button type="button" variant="outline" onClick={() => { setFootwearRows(prev => prev.length > 0 ? prev.slice(0, -1) : prev); setIsDirty(true); }}>Quitar último</Button>
                 </div>
               </>
             )}

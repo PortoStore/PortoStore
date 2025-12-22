@@ -47,14 +47,14 @@ export default function CheckoutPage() {
   ];
   const unitPriceById = useMemo(() => {
     const dict: Record<number, number> = {};
-    const pid = paymentMethod === "cash" ? 1 : 3;
     items.forEach((i) => {
       const p = products[i.product_id];
-      const priceRow = p?.prices?.find((r) => Number(r.payment_type_id) === pid) || p?.prices?.[0];
+      // Use payment_type_id 1 (Efectivo / Transferencia)
+      const priceRow = p?.prices?.find((r) => Number(r.payment_type_id) === 1) || p?.prices?.[0];
       dict[i.product_id] = Number(priceRow?.price) || 0;
     });
     return dict;
-  }, [items, products, paymentMethod]);
+  }, [items, products]);
   const subtotalDb = useMemo(() => items.reduce((acc, i) => acc + (unitPriceById[i.product_id] || 0) * (Number(i.qty) || 1), 0), [items, unitPriceById]);
   const total = subtotalDb + shippingCost;
 

@@ -54,7 +54,7 @@ export default async function Home() {
             />
         </div>
         
-        {/* AQUÍ ESTÁ EL CAMBIO: */}
+        
         <div className="flex justify-center w-full max-w-lg">
             <Button size="lg" asChild>
                 <Link href="#featured-products">Ver Productos</Link>
@@ -70,7 +70,7 @@ export default async function Home() {
                         alt="Nueva Colección"
                         fill
                         className="object-cover hover:scale-105 transition-transform duration-700"
-                       
+                        priority
                     />
                 </div>
             </div>
