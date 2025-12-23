@@ -183,27 +183,35 @@ export default async function AdminDashboard() {
                     </Card>
                 </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <BarChartComponent
-                    data={revenueData}
-                    title="KPI: Ingresos por día"
-                    subtitle="Últimos 14 días"
-                    dataKey="total_amount"
-                    colorVar="hsl(var(--chart-1))"
-                />
-                <BarChartComponent
-                    data={ordersData}
-                    title="KPI: Pedidos por día"
-                    subtitle="Últimos 14 días"
-                    dataKey="orders_count"
-                    colorVar="hsl(var(--chart-2))"
-                />
-                <DonutChartComponent
-                    data={paymentData}
-                    title="KPI: Métodos de pago"
-                    subtitle="Distribución últimos 14 días"
-                />
-            </div>
+            {salesRows && salesRows.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <BarChartComponent
+                        data={revenueData}
+                        title="KPI: Ingresos por día"
+                        subtitle="Últimos 14 días"
+                        dataKey="total_amount"
+                        colorVar="hsl(var(--chart-1))"
+                    />
+                    <BarChartComponent
+                        data={ordersData}
+                        title="KPI: Pedidos por día"
+                        subtitle="Últimos 14 días"
+                        dataKey="orders_count"
+                        colorVar="hsl(var(--chart-2))"
+                    />
+                    <DonutChartComponent
+                        data={paymentData}
+                        title="KPI: Métodos de pago"
+                        subtitle="Distribución últimos 14 días"
+                    />
+                </div>
+            ) : (
+                <div className="flex flex-col items-center justify-center p-8 text-center border rounded-xl bg-muted/10 min-h-[300px]">
+                    <Receipt className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+                    <h3 className="text-lg font-semibold">No hay datos de ventas</h3>
+                    <p className="text-muted-foreground">Aún no se han registrado pedidos en el sistema.</p>
+                </div>
+            )}
         </div>
     );
 }
