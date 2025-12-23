@@ -5,7 +5,7 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // CONFIGURACIÓN DE CORREOS
-const FROM_EMAIL = 'Porto Store <ventas@send.tiendaportostore.com>'; // Tu dominio verificado
+const FROM_EMAIL = 'Porto Store <ventas@tiendaportostore.com>'; // Tu dominio verificado
 const MY_GMAIL = 'tiendaportostore@gmail.com'; // Tu Gmail real para recibir avisos y respuestas
 
 interface OrderItem {
