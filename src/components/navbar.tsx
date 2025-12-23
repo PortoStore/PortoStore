@@ -7,7 +7,6 @@ import { ShoppingBag, Menu, ChevronDown, User, Loader2 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader } from "@/components/ui/sheet";
-import ThemeToggle from "./theme-toggle";
 import { getCartCount, cn } from "@/lib/utils";
 import { getCategories } from "@/services/products";
 
@@ -123,8 +122,6 @@ export default function Navbar() {
               )}
             </Button>
           </Link>
-
-          <ThemeToggle />
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
