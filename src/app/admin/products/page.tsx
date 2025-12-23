@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, ChevronLeft } from "lucide-react";
+import { Plus, ChevronLeft, Star } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -16,6 +16,7 @@ async function getProducts() {
         .select(`
         product_id,
         name,
+        is_featured,
         sku_base,
         categories (name),
         product_prices (price),
@@ -34,6 +35,7 @@ export default async function AdminProductsPage() {
     type ProductRow = {
         product_id: number;
         name: string;
+        is_featured?: boolean;
         sku_base?: string | null;
         categories?: { name: string } | { name: string }[] | null;
         product_prices?: { price: number }[] | null;
@@ -113,7 +115,12 @@ export default async function AdminProductsPage() {
                             {products.map((product) => (
                                 <TableRow key={product.product_id}>
                                     <TableCell className="font-mono text-xs">{product.sku_base || '-'}</TableCell>
-                                    <TableCell className="font-medium">{product.name}</TableCell>
+                                    <TableCell className="font-medium">
+                                        <div className="flex items-center gap-2">
+                                            {product.name}
+                                            {product.is_featured && <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />}
+                                        </div>
+                                    </TableCell>
                                     <TableCell>
                                         {Array.isArray(product.categories)
                                             ? product.categories.map((c: { name: string }) => c.name).join(', ')

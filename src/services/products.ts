@@ -24,6 +24,8 @@ export async function getFeaturedProducts(): Promise<Product[]> {
       product_prices (price),
       images (url)
     `)
+        .eq('is_featured', true)
+        .order('created_at', { ascending: false })
         .limit(4);
 
     if (error) {

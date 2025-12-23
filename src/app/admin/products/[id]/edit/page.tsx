@@ -17,7 +17,7 @@ type Category = { category_id: number; name: string };
 type Unit = { measurement_unit_id: number; name: string };
 type SizeRow = { size_id: number; name: string };
 // type PaymentType = { payment_type_id: number; name: string };
-type Product = { product_id: number; name: string; description: string | null; sku_base: string | null; category_id: number | null; measurement_unit_id: number | null };
+type Product = { product_id: number; name: string; description: string | null; sku_base: string | null; is_featured: boolean; category_id: number | null; measurement_unit_id: number | null };
 
 export default function EditProductPage() {
   const params = useParams();
@@ -38,6 +38,7 @@ export default function EditProductPage() {
 
   const [name, setName] = useState("");
   const [skuBase, setSkuBase] = useState("");
+  const [isFeatured, setIsFeatured] = useState(false);
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [unitId, setUnitId] = useState<number | null>(null);
@@ -63,7 +64,7 @@ export default function EditProductPage() {
     if (!id) return;
     (async () => {
       const [prod, cats, ms] = await Promise.all([
-        supabase.from("products").select("product_id,name,description,sku_base,category_id,measurement_unit_id").eq("product_id", id).single(),
+        supabase.from("products").select("product_id,name,description,sku_base,is_featured,category_id,measurement_unit_id").eq("product_id", id).single(),
         supabase.from("categories").select("category_id,name"),
         supabase.from("measurement_units").select("measurement_unit_id,name"),
       ]);
@@ -141,7 +142,7 @@ export default function EditProductPage() {
     try {
       const { error: upProductError } = await supabase
         .from("products")
-        .update({ name, description, sku_base: skuBase || null, category_id: categoryId, measurement_unit_id: unitId })
+        .update({ name, description, is_featured: isFeatured, sku_base: skuBase || null, category_id: categoryId, measurement_unit_id: unitId } as any)
         .eq("product_id", product.product_id);
       if (upProductError) throw upProductError;
 
@@ -237,9 +238,25 @@ export default function EditProductPage() {
               <Label htmlFor="name">Nombre *</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-3">
               <Label htmlFor="sku_base">SKU Base</Label>
-              <Input id="sku_base" value={skuBase} onChange={(e) => setSkuBase(e.target.value)} />
+              <Input
+                id="sku_base"
+                value={skuBase}
+                onChange={(e) => setSkuBase(e.target.value)}
+                placeholder="EJ: REM-001"
+              />
+            </div>
+
+            <div className="flex items-center space-x-2 pt-4">
+              <input
+                type="checkbox"
+                id="is_featured"
+                checked={isFeatured}
+                onChange={(e) => setIsFeatured(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <Label htmlFor="is_featured">Destacar producto en inicio</Label>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Descripción</Label>

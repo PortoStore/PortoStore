@@ -98,6 +98,7 @@ export default function NewProductPage() {
         const formData = new FormData(event.currentTarget);
         const name = formData.get('name') as string;
         const description = formData.get('description') as string;
+        const is_featured = formData.get('is_featured') === 'on';
         const sku_base = formData.get('sku_base') as string;
         const category_id = formData.get('category_id');
         const measurement_unit_id = formData.get('measurement_unit_id');
@@ -116,10 +117,11 @@ export default function NewProductPage() {
                 .insert([{
                     name,
                     description,
+                    is_featured,
                     sku_base: sku_base || null,
                     category_id: category_id ? Number(category_id) : null,
                     measurement_unit_id: measurement_unit_id ? Number(measurement_unit_id) : null
-                }])
+                }] as any)
                 .select()
                 .single();
 
@@ -230,9 +232,25 @@ export default function NewProductPage() {
                             <Label htmlFor="name">Nombre *</Label>
                             <Input id="name" name="name" required />
                         </div>
-                        <div className="grid gap-2">
+                        <div className="grid gap-3">
                             <Label htmlFor="sku_base">SKU Base</Label>
-                            <Input id="sku_base" name="sku_base" />
+                            <Input
+                                id="sku_base"
+                                name="sku_base"
+                                type="text"
+                                className="w-full"
+                                placeholder="EJ: REM-001"
+                            />
+                        </div>
+
+                        <div className="flex items-center space-x-2 pt-4">
+                            <input
+                                type="checkbox"
+                                id="is_featured"
+                                name="is_featured"
+                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                            <Label htmlFor="is_featured">Destacar producto en inicio</Label>
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="description">Descripción</Label>
