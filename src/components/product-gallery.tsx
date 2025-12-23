@@ -17,25 +17,30 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
 
   return (
     <div className="flex flex-col md:flex-row-reverse gap-4">
+      {/* Imagen Principal */}
       <div className="flex-grow">
-        <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-muted">
+        {/* Cambiamos aspect-[4/5] por aspect-square y bg-muted por bg-white */}
+        <div className="relative aspect-square rounded-xl overflow-hidden bg-white border border-slate-100">
           <Image
             src={selectedImage}
             alt={productName}
             fill
-            className="object-cover"
+            // LA CLAVE: Cambiamos object-cover por object-contain
+            className="object-contain p-4" 
             priority
           />
         </div>
       </div>
+
+      {/* Miniaturas */}
       <div className="flex md:flex-col gap-3 overflow-x-auto md:overflow-visible pb-2 md:pb-0">
         {displayImages.map((src, i) => (
           <button
             key={i}
             type="button"
             className={cn(
-              "relative size-20 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0",
-              selectedImage === src ? "border-primary" : "border-transparent hover:border-muted"
+              "relative size-20 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 bg-white",
+              selectedImage === src ? "border-primary" : "border-transparent hover:border-slate-200"
             )}
             onClick={() => setSelectedImage(src)}
           >
@@ -43,7 +48,8 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
               src={src}
               alt={`${productName} ${i + 1}`}
               fill
-              className="object-cover"
+              // También en las miniaturas para que no se vean raras
+              className="object-contain p-1"
             />
           </button>
         ))}
