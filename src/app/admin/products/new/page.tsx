@@ -29,16 +29,16 @@ export default function NewProductPage() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
     const [selectedSizeIds, setSelectedSizeIds] = useState<number[]>([]);
-    const [sizeStock, setSizeStock] = useState<Record<number, number>>({});
+    const [sizeStock, setSizeStock] = useState<Record<number, number | string>>({});
     const [sizeKind, setSizeKind] = useState<"clothing" | "footwear">("clothing");
-    const [footwearRows, setFootwearRows] = useState<{ label: string; cm?: number | null; stock: number }[]>([{ label: "", cm: null, stock: 0 }]);
+    const [footwearRows, setFootwearRows] = useState<{ label: string; cm?: number | null; stock: number | string }[]>([{ label: "", cm: null, stock: 0 }]);
 
     const FIXED_PAYMENTS: { payment_type_id: number; name: string }[] = [
         { payment_type_id: 1, name: "Efectivo / Transferencia" },
         { payment_type_id: 2, name: "Tarjeta de Crédito / Débito" },
     ];
     const [selectedPaymentIds, setSelectedPaymentIds] = useState<number[]>([]);
-    const [paymentPrices, setPaymentPrices] = useState<Record<number, number>>({});
+    const [paymentPrices, setPaymentPrices] = useState<Record<number, number | string>>({});
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [previews, setPreviews] = useState<string[]>([]);
     const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
@@ -358,8 +358,9 @@ export default function NewProductPage() {
                                         step="0.01"
                                         name={`price_${pt.payment_type_id}`}
                                         placeholder="0.00"
+                                        value={paymentPrices[pt.payment_type_id] === undefined ? "" : paymentPrices[pt.payment_type_id]}
                                         onChange={(e) => {
-                                            const val = Number(e.target.value || 0);
+                                            const val = e.target.value === "" ? "" : Number(e.target.value);
                                             setPaymentPrices(prev => ({ ...prev, [pt.payment_type_id]: val }));
                                         }}
                                         className="col-span-2"
@@ -420,8 +421,9 @@ export default function NewProductPage() {
                                                 type="number"
                                                 name={`stock_${size.size_id}`}
                                                 placeholder="0"
+                                                value={sizeStock[size.size_id] === undefined ? "" : sizeStock[size.size_id]}
                                                 onChange={(e) => {
-                                                    const val = Number(e.target.value || 0);
+                                                    const val = e.target.value === "" ? "" : Number(e.target.value);
                                                     setSizeStock(prev => ({ ...prev, [size.size_id]: val }));
                                                 }}
                                                 className="col-span-2"
@@ -429,7 +431,7 @@ export default function NewProductPage() {
                                         </div>
                                     ))}
                                     <div className="text-sm text-muted-foreground">
-                                        Cantidad total: {selectedSizeIds.reduce((acc, id) => acc + (sizeStock[id] || 0), 0)}
+                                        Cantidad total: {selectedSizeIds.reduce((acc, id) => acc + Number(sizeStock[id] || 0), 0)}
                                     </div>
                                 </div>
                             </>
@@ -463,9 +465,9 @@ export default function NewProductPage() {
                                             <Input
                                                 className="col-span-1"
                                                 type="number"
-                                                value={row.stock}
+                                                value={row.stock === "" ? "" : row.stock}
                                                 onChange={(e) => {
-                                                    const v = Number(e.target.value || 0);
+                                                    const v = e.target.value === "" ? "" : Number(e.target.value);
                                                     setFootwearRows(prev => prev.map((r, i) => i === idx ? { ...r, stock: v } : r));
                                                 }}
                                             />
@@ -474,7 +476,7 @@ export default function NewProductPage() {
                                 </div>
                                 <div className="flex gap-3">
                                     <Button type="button" variant="outline" onClick={() => { setFootwearRows(prev => [...prev, { label: "", cm: null, stock: 0 }]); setIsDirty(true); }}>Agregar talle</Button>
-                                    <Button type="button" variant="outline" onClick={() => { setFootwearRows(prev => prev.length > 1 ? prev.slice(0, -1) : prev); setIsDirty(true); }}>Quitar último</Button>
+                                    <Button type="button" variant="outline" onClick={() => { setFootwearRows(prev => prev.length > 0 ? prev.slice(0, -1) : prev); setIsDirty(true); }}>Quitar último</Button>
                                 </div>
                             </>
                         )}
