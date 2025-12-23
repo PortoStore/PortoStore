@@ -8,14 +8,14 @@ import { getCartItems, clearCart } from "@/lib/utils";
 import { sendOrderEmails } from "@/actions/send-emails";
 
 export default function CheckoutPage() {
-  const [shipping, setShipping] = useState<"home" | "branch" | "store">("home");
-  const [shippingCost, setShippingCost] = useState<number>(0);
+  const [shipping, setShipping] = useState<"home" | "store">("home");
   const [selectedBranch, setSelectedBranch] = useState<string>("");
   const postalCodeRef = useRef<HTMLInputElement>(null);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer">("cash");
   const [copied, setCopied] = useState<boolean>(false);
   const [items, setItems] = useState(() => getCartItems());
-  const [products, setProducts] = useState<Record<number, { name: string; image?: string; prices: { payment_type_id: number; price: number }[] }>>({});
+  const [products, setProducts] = useState<Record<number, { name: string; sku_base?: string; image?: string; prices: { payment_type_id: number; price: number }[] }>>({});
+  const [sizeNames, setSizeNames] = useState<Record<number, string>>({});
   const [success, setSuccess] = useState<boolean>(false);
   const [saleId, setSaleId] = useState<number | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
@@ -30,21 +30,17 @@ export default function CheckoutPage() {
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [bank, setBank] = useState({
-    cbu: "2850590940090412345678",
-    alias: "portostore.cobros",
-    bank: "Banco Nación",
-    account: "Porto Store S.A.",
-    cuit: "30-12345678-9",
+    cbu: "",
+    alias: "",
+    bank: "",
+    account: "",
+    cuit: "",
   });
+  const [whatsappNumber, setWhatsappNumber] = useState<string>("");
   const [discountCode, setDiscountCode] = useState<string>("");
   const [discountErr, setDiscountErr] = useState<string | null>(null);
   const [appliedDiscount, setAppliedDiscount] = useState<{ id: number; code: string; type: "fixed" | "percentage"; value: number } | null>(null);
-  const branches = [
-    { code: "POS-CENTRO", name: "Correo Argentino - Posadas Centro", address: "Av. Mitre 1234", hours: "Lun-Vie 9-17" },
-    { code: "POS-NORTE", name: "Correo Argentino - Posadas Norte", address: "Av. López y Planes 456", hours: "Lun-Vie 9-17" },
-    { code: "CBA-CENTRO", name: "Correo Argentino - Córdoba Centro", address: "San Jerónimo 789", hours: "Lun-Vie 9-18" },
-    { code: "BA-PALERMO", name: "Correo Argentino - Palermo", address: "Av. Santa Fe 1500", hours: "Lun-Vie 9-18" },
-  ];
+
   const unitPriceById = useMemo(() => {
     const dict: Record<number, number> = {};
     items.forEach((i) => {
@@ -56,7 +52,7 @@ export default function CheckoutPage() {
     return dict;
   }, [items, products]);
   const subtotalDb = useMemo(() => items.reduce((acc, i) => acc + (unitPriceById[i.product_id] || 0) * (Number(i.qty) || 1), 0), [items, unitPriceById]);
-  const total = subtotalDb + shippingCost;
+  const total = subtotalDb;
 
   useEffect(() => {
     const onUpdate = () => setItems(getCartItems());
@@ -79,12 +75,12 @@ export default function CheckoutPage() {
       }
       const { data } = await supabase
         .from("products")
-        .select("product_id,name,images(url),product_prices(payment_type_id,price)")
+        .select("product_id,name,sku_base,images(url),product_prices(payment_type_id,price)")
         .in("product_id", ids);
-      const dict: Record<number, { name: string; image?: string; prices: { payment_type_id: number; price: number }[] }> = {};
-      type Row = { product_id: number; name: string; images?: { url: string }[]; product_prices?: { payment_type_id: number; price: number }[] };
+      const dict: Record<number, { name: string; sku_base?: string; image?: string; prices: { payment_type_id: number; price: number }[] }> = {};
+      type Row = { product_id: number; name: string; sku_base?: string; images?: { url: string }[]; product_prices?: { payment_type_id: number; price: number }[] };
       (data as Row[] | null)?.forEach((p) => {
-        dict[p.product_id] = { name: p.name, image: p.images?.[0]?.url, prices: p.product_prices || [] };
+        dict[p.product_id] = { name: p.name, sku_base: p.sku_base || undefined, image: p.images?.[0]?.url, prices: p.product_prices || [] };
       });
       if (!cancelled) setProducts(dict);
     };
@@ -93,15 +89,33 @@ export default function CheckoutPage() {
   }, [items]);
 
   useEffect(() => {
+    const sizeIds = Array.from(new Set(items.map((i) => i.size_id)));
+    if (sizeIds.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("sizes")
+        .select("size_id,name")
+        .in("size_id", sizeIds);
+      if (!cancelled && data) {
+        const dict: Record<number, string> = {};
+        (data as { size_id: number; name: string }[]).forEach(s => { dict[s.size_id] = s.name; });
+        setSizeNames(dict);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [items]);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       const { data } = await supabase
         .from("store_settings")
-        .select("bank,cbu,alias,account,cuit")
+        .select("bank,cbu,alias,account,cuit,whatsapp")
         .eq("id", 1)
         .maybeSingle();
       if (!cancelled && data) {
-        const d = data as { bank?: string | null; cbu?: string | null; alias?: string | null; account?: string | null; cuit?: string | null };
+        const d = data as { bank?: string | null; cbu?: string | null; alias?: string | null; account?: string | null; cuit?: string | null; whatsapp?: string | null };
         setBank({
           bank: d.bank || "Banco Nación",
           cbu: d.cbu || "2850590940090412345678",
@@ -109,6 +123,10 @@ export default function CheckoutPage() {
           account: d.account || "Porto Store S.A.",
           cuit: d.cuit || "30-12345678-9",
         });
+        if (d.whatsapp) {
+           const digits = d.whatsapp.replace(/[^0-9]/g, "");
+           if (digits) setWhatsappNumber(digits);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -128,11 +146,117 @@ export default function CheckoutPage() {
       const cp = postalCode.trim();
       if (!/^[0-9]{4,8}$/.test(cp)) next.postalCode = "Código postal inválido";
     }
-    if (shipping === "branch") {
-      if (!selectedBranch) next.branch = "Seleccioná una sucursal";
-    }
+
     setErrors(next);
     return Object.keys(next).length === 0;
+  }
+
+  async function createOrderInDb(): Promise<number> {
+    const paymentId = paymentMethod === "cash" ? 1 : 3;
+    const initialStatus = paymentMethod === "transfer" ? "pending_approval" : "pending";
+    // Si es WhatsApp (home), removemos el envío del total en la DB para coincidir con el mensaje
+    const finalTotal = shipping === "home" ? Math.max(0, subtotalDb - discountAmount) : totalWithDiscount;
+    
+    const { data: saleRow, error: saleErr } = await supabase
+      .from("sales")
+      .insert([{ payment_type_id: paymentId, total_amount: finalTotal, status: initialStatus }])
+      .select()
+      .single();
+    if (saleErr) throw saleErr;
+    const sid = Number((saleRow as { sale_id: number }).sale_id);
+    
+    const details = items.map((i) => ({
+      sale_id: sid,
+      product_id: i.product_id,
+      size_id: i.size_id,
+      quantity: Number(i.qty) || 1,
+      price_at_sale: unitPriceById[i.product_id] || 0,
+    }));
+    const { error: detErr } = await supabase.from("sale_details").insert(details);
+    if (detErr) throw detErr;
+    
+    if (paymentMethod === "transfer") {
+      const { error: recErr } = await supabase
+        .from("payment_records")
+        .insert([{ sale_id: sid, payment_type_id: 3, amount: finalTotal, reference_number: transferRef || null, record_status: "recorded" }]);
+      if (recErr) throw recErr;
+    }
+    
+    if (appliedDiscount) {
+      const { error: usageErr } = await supabase
+        .from("discount_usages")
+        .insert([{ sale_id: sid, discount_id: appliedDiscount.id, code: appliedDiscount.code, amount_applied: discountAmount }]);
+      if (usageErr) throw usageErr;
+      const { data: discRow } = await supabase
+        .from("discounts")
+        .select("uses_count")
+        .eq("discount_id", appliedDiscount.id)
+        .single();
+      const currentCount = Number(((discRow as { uses_count?: number } | null)?.uses_count) || 0);
+      await supabase
+        .from("discounts")
+        .update({ uses_count: currentCount + 1 })
+        .eq("discount_id", appliedDiscount.id);
+    }
+    return sid;
+  }
+
+  async function handleWhatsAppCheckout() {
+    setSubmitError(null);
+    if (!whatsappNumber) { setSubmitError("Error: No hay número de WhatsApp configurado en la tienda."); return; }
+    if (!validateShipping()) return;
+    if (items.length === 0) { setSubmitError("No hay productos en el carrito"); return; }
+    
+    try {
+      setSaving(true);
+      const sid = await createOrderInDb();
+
+      const itemsList = items.map(i => {
+        const p = products[i.product_id];
+        const name = p?.name || `Producto #${i.product_id}`;
+        const sku = p?.sku_base ? `SKU: ${p.sku_base}` : "";
+        const sizeName = sizeNames[i.size_id] || "Talle único";
+        const qty = Number(i.qty) || 1;
+        const unit = unitPriceById[i.product_id] || 0;
+        return `- ${sku ? sku + " | " : ""}${name} (Talle: ${sizeName}) x${qty} ($${unit})`;
+      }).join('\n');
+
+      // Total para WhatsApp sin envío
+      const totalMsg = Math.max(0, subtotalDb - discountAmount);
+
+      const msg = `Hola, quiero realizar un pedido con envío a domicilio.
+Código de pedido: #${sid}
+
+*Datos de Envío:*
+Nombre: ${firstName} ${lastName}
+Email: ${email}
+Dirección: ${address}
+Ciudad: ${city}
+CP: ${postalCode}
+
+*Pedido:*
+${itemsList}
+
+*Resumen:*
+Subtotal: $${subtotalDb.toFixed(2)}
+${appliedDiscount ? `Descuento: -$${discountAmount.toFixed(2)}\n` : ""}Total: $${totalMsg.toFixed(2)}
+
+*Método de Pago:* ${paymentMethod === 'transfer' ? 'Transferencia' : 'Efectivo'}
+${paymentMethod === 'transfer' ? `(Referencia: ${transferRef})` : ''}`;
+
+      clearCart();
+      setItems([]);
+      setSaleId(sid);
+      setSuccess(true); // Mostramos modal de éxito también
+      
+      const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(msg)}`;
+      window.open(url, "_blank");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo generar el pedido para WhatsApp";
+      setSubmitError(msg);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function finalizePurchase() {
@@ -142,47 +266,9 @@ export default function CheckoutPage() {
     if (items.length === 0) { setSubmitError("No hay productos en el carrito"); return; }
     try {
       setSaving(true);
-      const paymentId = paymentMethod === "cash" ? 1 : 3;
-      const initialStatus = paymentMethod === "transfer" ? "pending_approval" : "pending";
-      const { data: saleRow, error: saleErr } = await supabase
-        .from("sales")
-        .insert([{ payment_type_id: paymentId, total_amount: totalWithDiscount, status: initialStatus }])
-        .select()
-        .single();
-      if (saleErr) throw saleErr;
-      const sid = Number((saleRow as { sale_id: number }).sale_id);
+      const sid = await createOrderInDb();
       setSaleId(sid);
-      const details = items.map((i) => ({
-        sale_id: sid,
-        product_id: i.product_id,
-        size_id: i.size_id,
-        quantity: Number(i.qty) || 1,
-        price_at_sale: unitPriceById[i.product_id] || 0,
-      }));
-      const { error: detErr } = await supabase.from("sale_details").insert(details);
-      if (detErr) throw detErr;
-      if (paymentMethod === "transfer") {
-        const { error: recErr } = await supabase
-          .from("payment_records")
-          .insert([{ sale_id: sid, payment_type_id: 3, amount: totalWithDiscount, reference_number: transferRef || null, record_status: "recorded" }]);
-        if (recErr) throw recErr;
-      }
-      if (appliedDiscount) {
-        const { error: usageErr } = await supabase
-          .from("discount_usages")
-          .insert([{ sale_id: sid, discount_id: appliedDiscount.id, code: appliedDiscount.code, amount_applied: discountAmount }]);
-        if (usageErr) throw usageErr;
-        const { data: discRow } = await supabase
-          .from("discounts")
-          .select("uses_count")
-          .eq("discount_id", appliedDiscount.id)
-          .single();
-        const currentCount = Number(((discRow as { uses_count?: number } | null)?.uses_count) || 0);
-        await supabase
-          .from("discounts")
-          .update({ uses_count: currentCount + 1 })
-          .eq("discount_id", appliedDiscount.id);
-      }
+      
       clearCart();
       setItems([]);
 
@@ -216,19 +302,6 @@ export default function CheckoutPage() {
     }
   }
 
-  function calcShippingFromPostalCode(cp: string) {
-    const n = parseInt(cp.replace(/[^0-9]/g, ""), 10);
-    if (Number.isNaN(n)) return 0;
-    if (n < 2000) return 3500;
-    if (n < 5000) return 4200;
-    return 5000;
-  }
-
-  function handleCalcShipping() {
-    const cp = postalCodeRef.current?.value?.trim() || "";
-    const cost = calcShippingFromPostalCode(cp);
-    setShippingCost(cost);
-  }
   async function applyDiscount() {
     setDiscountErr(null);
     const code = discountCode.trim().toUpperCase();
@@ -269,7 +342,7 @@ export default function CheckoutPage() {
       ? Math.min(appliedDiscount.value, discountBase)
       : Math.min((discountBase * appliedDiscount.value) / 100, discountBase)
     : 0;
-  const totalWithDiscount = Math.max(0, subtotalDb - discountAmount) + shippingCost;
+  const totalWithDiscount = Math.max(0, subtotalDb - discountAmount);
   return (
     <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
       <div className="flex flex-wrap gap-2 mb-8 text-sm">
@@ -313,11 +386,7 @@ export default function CheckoutPage() {
                   Envío a domicilio
                 </label>
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="radio" name="shipping_method" value="branch" checked={shipping === "branch"} onChange={() => { setShipping("branch"); setShippingCost(0); setPaymentMethod("transfer"); }} className="size-4" />
-                  Retiro en sucursal
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="radio" name="shipping_method" value="store" checked={shipping === "store"} onChange={() => { setShipping("store"); setShippingCost(0); setPaymentMethod("cash"); }} className="size-4" />
+                  <input type="radio" name="shipping_method" value="store" checked={shipping === "store"} onChange={() => { setShipping("store"); setPaymentMethod("cash"); }} className="size-4" />
                   Retiro en la tienda
                 </label>
               </fieldset>
@@ -333,37 +402,11 @@ export default function CheckoutPage() {
                     <Input id="city" placeholder="Posadas" value={city} onChange={(e) => { setCity(e.target.value); setErrors((prev) => ({ ...prev, city: "" })); }} />
                     {errors.city && <div className="text-red-500 text-xs mt-1">{errors.city}</div>}
                   </div>
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="text-sm font-medium mb-1" htmlFor="postalCode">Código Postal</label>
                     <Input id="postalCode" placeholder="B1636" ref={postalCodeRef} value={postalCode} onChange={(e) => { setPostalCode(e.target.value); setErrors((prev) => ({ ...prev, postalCode: "" })); }} />
                     {errors.postalCode && <div className="text-red-500 text-xs mt-1">{errors.postalCode}</div>}
                   </div>
-                  <div className="sm:col-span-2 flex items-end gap-3">
-                    <Button type="button" variant="secondary" onClick={handleCalcShipping}>Calcular costo de envío</Button>
-                    <span className="text-sm text-muted-foreground">Costo estimado: ${shippingCost.toFixed(2)}</span>
-                  </div>
-                </div>
-              )}
-              {shipping === "branch" && (
-                <div className="grid gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-1" htmlFor="branch">Sucursal</label>
-                    <select id="branch" className="h-10 w-full rounded-md border bg-transparent px-3 text-sm" value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)}>
-                      <option value="">Seleccioná sucursal</option>
-                      {branches.map((b) => (
-                        <option key={b.code} value={b.code}>{b.name}</option>
-                      ))}
-                    </select>
-                    {errors.branch && <div className="text-red-500 text-xs mt-1">{errors.branch}</div>}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Te avisaremos cuando el pedido esté listo para retirar.</div>
-                  {selectedBranch && (
-                    <div className="grid gap-1 text-sm">
-                      <div className="font-medium">Detalles de la sucursal</div>
-                      <div>{branches.find(b => b.code === selectedBranch)?.address}</div>
-                      <div className="text-muted-foreground">{branches.find(b => b.code === selectedBranch)?.hours}</div>
-                    </div>
-                  )}
                 </div>
               )}
               {shipping === "store" && (
@@ -392,7 +435,7 @@ export default function CheckoutPage() {
                   Transferencia
                 </label>
                 {shipping !== "store" && (
-                  <div className="text-xs text-muted-foreground">Para envío o retiro en sucursal, sólo transferencia.</div>
+                  <div className="text-xs text-muted-foreground">Para envío, sólo transferencia.</div>
                 )}
               </fieldset>
               {paymentMethod === "transfer" && (
@@ -427,7 +470,9 @@ export default function CheckoutPage() {
               )}
             </div>
           </details>
-          <Button className="w-full" type="button" onClick={finalizePurchase} disabled={saving || items.length === 0}>Finalizar Compra</Button>
+          <Button className="w-full" type="button" onClick={shipping === "home" ? handleWhatsAppCheckout : finalizePurchase} disabled={saving || items.length === 0}>
+            {shipping === "home" ? "Finalizar por WhatsApp" : "Finalizar Compra"}
+          </Button>
           {submitError && (<div className="mt-3 text-sm text-red-500">{submitError}</div>)}
           <Dialog open={success} onOpenChange={setSuccess}>
             <DialogContent>
@@ -496,7 +541,6 @@ export default function CheckoutPage() {
               </div>
               {discountErr && (<div className="text-red-500 text-xs">{discountErr}</div>)}
               <div className="flex justify-between"><span>Subtotal</span><span>${subtotalDb.toFixed(2)}</span></div>
-              <div className="flex justify-between"><span>Envío</span><span>${shippingCost.toFixed(2)}</span></div>
               {appliedDiscount && (
                 <div className="flex justify-between text-primary"><span>Descuento</span><span>-${discountAmount.toFixed(2)}</span></div>
               )}
