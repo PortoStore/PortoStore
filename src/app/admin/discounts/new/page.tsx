@@ -8,18 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export default function NewDiscountPage() {
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [type, setType] = useState<"fixed" | "percentage">("percentage");
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
-    setError(null);
     const formData = new FormData(event.currentTarget);
     const codeRaw = (formData.get("code") as string) || "";
     const valueRaw = Number(formData.get("value") || 0);
@@ -28,7 +27,7 @@ export default function NewDiscountPage() {
     const isActiveRaw = String(formData.get("is_active") || "true") === "true";
     const code = codeRaw.trim().toUpperCase();
     if (!code || valueRaw <= 0) {
-      setError("Código y valor son obligatorios");
+      toast.error("Código y valor son obligatorios");
       setLoading(false);
       return;
     }
@@ -50,10 +49,11 @@ export default function NewDiscountPage() {
       }
       const { error: insErr } = await supabase.from("discounts").insert([payload]);
       if (insErr) throw insErr;
+      toast.success("Descuento creado exitosamente");
       router.push("/admin/discounts");
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo crear el descuento");
+      toast.error(e instanceof Error ? e.message : "No se pudo crear el descuento");
     } finally {
       setLoading(false);
     }
@@ -111,7 +111,6 @@ export default function NewDiscountPage() {
                 </SelectContent>
               </Select>
             </div>
-            {error && <div className="text-sm text-red-500">{error}</div>}
             <div className="flex justify-end gap-4">
               <Button type="button" variant="outline" onClick={() => router.back()}>Cancelar</Button>
               <Button type="submit" disabled={loading}>{loading ? "Creando..." : "Crear Descuento"}</Button>

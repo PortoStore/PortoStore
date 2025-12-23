@@ -10,12 +10,12 @@ import { useState, useEffect } from "react";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useAdminNavigation } from "@/components/admin/admin-navigation-provider";
 import CancelButton from "@/components/admin/cancel-button";
+import { toast } from "sonner";
 
 export default function NewCategoryPage() {
     const router = useRouter();
     const supabase = createClient();
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const { isDirty, setIsDirty } = useAdminNavigation();
 
     useUnsavedChanges(isDirty);
@@ -28,13 +28,12 @@ export default function NewCategoryPage() {
     async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setLoading(true);
-        setError(null);
 
         const formData = new FormData(event.currentTarget);
         const name = formData.get('name') as string;
 
         if (!name) {
-            setError("El nombre es obligatorio");
+            toast.error("El nombre es obligatorio");
             setLoading(false);
             return;
         }
@@ -46,12 +45,13 @@ export default function NewCategoryPage() {
 
             if (insertError) throw insertError;
 
+            toast.success("Categoría creada exitosamente");
             router.push('/admin/categories');
             router.refresh();
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
             console.error(e);
-            setError(msg || "No se pudo crear la categoría");
+            toast.error(msg || "No se pudo crear la categoría");
         } finally {
             setLoading(false);
         }
@@ -73,12 +73,6 @@ export default function NewCategoryPage() {
                             <Label htmlFor="name">Nombre</Label>
                             <Input id="name" name="name" placeholder="ej.: Remeras" required />
                         </div>
-
-                        {error && (
-                            <div className="text-sm text-red-500">
-                                {error}
-                            </div>
-                        )}
 
                         <div className="flex justify-end gap-4">
                             <CancelButton isDirty={isDirty} />

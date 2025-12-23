@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useAdminNavigation } from "@/components/admin/admin-navigation-provider";
 import CancelButton from "@/components/admin/cancel-button";
+import { toast } from "sonner";
 
 type Category = { category_id: number; name: string };
 type Unit = { measurement_unit_id: number; name: string };
@@ -23,7 +24,6 @@ export default function EditProductPage() {
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -138,7 +138,6 @@ export default function EditProductPage() {
     e.preventDefault();
     if (!product) return;
     setLoading(true);
-    setError(null);
     try {
       const { error: upProductError } = await supabase
         .from("products")
@@ -212,11 +211,12 @@ export default function EditProductPage() {
           if (insSizesError) throw insSizesError;
         }
       }
-
+      
+      toast.success("Producto actualizado exitosamente");
       router.push("/admin/products");
       router.refresh();
     } catch (err) {
-      setError((err as Error).message);
+      toast.error((err as Error).message || "Error al actualizar producto");
     } finally {
       setLoading(false);
     }
@@ -325,8 +325,8 @@ export default function EditProductPage() {
                   <SelectValue placeholder="Elegí tipo de talle" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="clothing">Ropa</SelectItem>
-                  <SelectItem value="footwear">Calzado</SelectItem>
+                  <SelectItem value="clothing">Letra</SelectItem>
+                  <SelectItem value="footwear">Numerico</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -362,7 +362,7 @@ export default function EditProductPage() {
               <>
                 <div className="grid gap-3">
                   {footwearRows.map((row, idx) => (
-                    <div key={idx} className="grid grid-cols-6 items-center gap-3">
+                    <div key={idx} className="grid grid-cols-2 sm:grid-cols-6 items-center gap-3 border-b pb-4 mb-4 sm:border-none sm:pb-0 sm:mb-0 last:border-0">
                       <Label className="col-span-1">Talle</Label>
                       <Input
                         className="col-span-1"
@@ -405,8 +405,6 @@ export default function EditProductPage() {
             )}
           </CardContent>
         </Card>
-
-        {error && <div className="text-sm text-red-500 font-medium">{error}</div>}
 
         <div className="flex justify-end gap-4">
           <CancelButton isDirty={isDirty} />

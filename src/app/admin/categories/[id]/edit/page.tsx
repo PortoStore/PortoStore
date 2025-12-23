@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useAdminNavigation } from "@/components/admin/admin-navigation-provider";
 import CancelButton from "@/components/admin/cancel-button";
+import { toast } from "sonner";
 
 type Category = { category_id: number; name: string };
 
@@ -18,7 +19,6 @@ export default function EditCategoryPage() {
   const supabase = createClient();
   const id = Number(params?.id);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<Category | null>(null);
   const [name, setName] = useState("");
   const { isDirty, setIsDirty } = useAdminNavigation();
@@ -56,17 +56,18 @@ export default function EditCategoryPage() {
     e.preventDefault();
     if (!category) return;
     setLoading(true);
-    setError(null);
+
     try {
       const { error: updateError } = await supabase
         .from("categories")
         .update({ name })
         .eq("category_id", category.category_id);
       if (updateError) throw updateError;
+      toast.success("Categoría actualizada exitosamente");
       router.push("/admin/categories");
       router.refresh();
     } catch (err) {
-      setError((err as Error).message);
+      toast.error((err as Error).message || "Error al actualizar la categoría");
     } finally {
       setLoading(false);
     }
@@ -87,7 +88,6 @@ export default function EditCategoryPage() {
               <Label htmlFor="name">Nombre</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
-            {error && <p className="text-sm text-red-500">{error}</p>}
           </CardContent>
         </Card>
 

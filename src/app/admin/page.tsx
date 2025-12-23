@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Package, Tags, Plus, LayoutDashboard, Receipt, Store } from "lucide-react";
 import AdminLogoutButton from "@/components/admin-logout-button";
+import { BarChartComponent } from "@/components/admin/charts/bar-chart";
+import { DonutChartComponent } from "@/components/admin/charts/donut-chart";
 
 export default async function AdminDashboard() {
     const supabase = await createClient();
@@ -55,28 +57,25 @@ export default async function AdminDashboard() {
             ordersByDay[k] += 1;
         }
     });
-    const revSeries = dayKeys.map(k => revByDay[k]);
-    const ordSeries = dayKeys.map(k => ordersByDay[k]);
-    const maxRev = Math.max(1, ...revSeries);
-    const maxOrd = Math.max(1, ...ordSeries);
-    const makePoints = (series: number[], max: number) => {
-        const n = series.length;
-        if (n <= 1) return "";
-        return series
-            .map((v, i) => {
-                const x = (i * 100) / (n - 1);
-                const y = 100 - ((v / max) * 100);
-                return `${x.toFixed(2)},${y.toFixed(2)}`;
-            })
-            .join(" ");
-    };
-    const revPoints = makePoints(revSeries, maxRev);
-    const ordPoints = makePoints(ordSeries, maxOrd);
+
+    const revenueData = dayKeys.map(k => ({
+        date: k,
+        total_amount: revByDay[k]
+    }));
+
+    const ordersData = dayKeys.map(k => ({
+        date: k,
+        orders_count: ordersByDay[k]
+    }));
+
     const cashCount = rows14.filter(r => r.payment_type_id === 1).length;
     const transferCount = rows14.filter(r => r.payment_type_id === 3).length;
-    const totalPayments = cashCount + transferCount || 1;
-    const cashPct = Math.round((cashCount / totalPayments) * 100);
-    const transferPct = 100 - cashPct;
+
+    const paymentData = [
+        { name: "Efectivo", count: cashCount, fill: "#10b981" },
+        { name: "Transferencia", count: transferCount, fill: "#3b82f6" },
+    ];
+
 
     return (
         <div className="space-y-4">
@@ -184,71 +183,26 @@ export default async function AdminDashboard() {
                     </Card>
                 </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>KPI: Ingresos por día (14)</CardTitle>
-                        <CardDescription>Últimos 14 días</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-36">
-                            <polyline points={revPoints} fill="none" stroke="rgb(22,163,74)" strokeWidth="2" />
-                            {revSeries.map((v, i) => {
-                                const x = (i * 100) / (revSeries.length - 1);
-                                const y = 100 - ((v / maxRev) * 100);
-                                return <circle key={i} cx={x} cy={y} r="1.5" fill="rgb(22,163,74)" />;
-                            })}
-                        </svg>
-                        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-                            {dayKeys.map((k) => (<span key={k}>{k.slice(5)}</span>))}
-                        </div>
-                        <div className="mt-2 text-sm text-muted-foreground">Máx ${maxRev.toFixed(0)}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>KPI: Pedidos por día (14)</CardTitle>
-                        <CardDescription>Últimos 14 días</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-36">
-                            <polyline points={ordPoints} fill="none" stroke="rgb(37,99,235)" strokeWidth="2" />
-                            {ordSeries.map((v, i) => {
-                                const x = (i * 100) / (ordSeries.length - 1);
-                                const y = 100 - ((v / maxOrd) * 100);
-                                return <circle key={i} cx={x} cy={y} r="1.5" fill="rgb(37,99,235)" />;
-                            })}
-                        </svg>
-                        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-                            {dayKeys.map((k) => (<span key={k}>{k.slice(5)}</span>))}
-                        </div>
-                        <div className="mt-2 text-sm text-muted-foreground">Máx {maxOrd}</div>
-                    </CardContent>
-                </Card>
-                <Card className="md:col-span-2">
-                    <CardHeader>
-                        <CardTitle>KPI: Métodos de pago</CardTitle>
-                        <CardDescription>Distribución últimos 14 días</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid gap-3">
-                            <div className="flex items-center justify-between text-sm">
-                                <span>Efectivo</span>
-                                <span className="text-muted-foreground">{cashCount} ({cashPct}%)</span>
-                            </div>
-                            <div className="h-2 w-full bg-muted rounded">
-                                <div className="h-2 bg-green-600 rounded" style={{ width: `${cashPct}%` }} />
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span>Transferencia</span>
-                                <span className="text-muted-foreground">{transferCount} ({transferPct}%)</span>
-                            </div>
-                            <div className="h-2 w-full bg-muted rounded">
-                                <div className="h-2 bg-blue-600 rounded" style={{ width: `${transferPct}%` }} />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <BarChartComponent
+                    data={revenueData}
+                    title="KPI: Ingresos por día"
+                    subtitle="Últimos 14 días"
+                    dataKey="total_amount"
+                    colorVar="hsl(var(--chart-1))"
+                />
+                <BarChartComponent
+                    data={ordersData}
+                    title="KPI: Pedidos por día"
+                    subtitle="Últimos 14 días"
+                    dataKey="orders_count"
+                    colorVar="hsl(var(--chart-2))"
+                />
+                <DonutChartComponent
+                    data={paymentData}
+                    title="KPI: Métodos de pago"
+                    subtitle="Distribución últimos 14 días"
+                />
             </div>
         </div>
     );

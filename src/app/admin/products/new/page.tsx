@@ -15,12 +15,12 @@ import { CldUploadWidget } from "next-cloudinary";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useAdminNavigation } from "@/components/admin/admin-navigation-provider";
 import CancelButton from "@/components/admin/cancel-button";
+import { toast } from "sonner";
 
 export default function NewProductPage() {
     const router = useRouter();
     const supabase = createClient();
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
     // Data for selects
     type Category = { category_id: number; name: string };
@@ -94,7 +94,6 @@ export default function NewProductPage() {
     async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setLoading(true);
-        setError(null);
 
         const formData = new FormData(event.currentTarget);
         const name = formData.get('name') as string;
@@ -105,7 +104,7 @@ export default function NewProductPage() {
         const imageUrls = uploadedImageUrls;
 
         if (!name) {
-            setError("El nombre es obligatorio");
+            toast.error("El nombre es obligatorio");
             setLoading(false);
             return;
         }
@@ -205,12 +204,12 @@ export default function NewProductPage() {
                 if (stockError) throw stockError;
             }
 
+            toast.success("Producto creado exitosamente");
             router.push('/admin/products');
             router.refresh();
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
-                
-            setError(msg || "No se pudo crear el producto");
+            toast.error(msg || "No se pudo crear el producto");
         } finally {
             setLoading(false);
         }
@@ -389,8 +388,8 @@ export default function NewProductPage() {
                                     <SelectValue placeholder="Elegí tipo de talle" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="clothing">Ropa</SelectItem>
-                                    <SelectItem value="footwear">Calzado</SelectItem>
+                                    <SelectItem value="clothing">Letra</SelectItem>
+                                    <SelectItem value="footwear">Numerico</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -439,7 +438,7 @@ export default function NewProductPage() {
                             <>
                                 <div className="grid gap-3">
                                     {footwearRows.map((row, idx) => (
-                                        <div key={idx} className="grid grid-cols-6 items-center gap-3">
+                                        <div key={idx} className="grid grid-cols-2 sm:grid-cols-6 items-center gap-3 border-b pb-4 mb-4 sm:border-none sm:pb-0 sm:mb-0 last:border-0">
                                             <Label className="col-span-1">Talle</Label>
                                             <Input
                                                 className="col-span-1"
@@ -482,12 +481,6 @@ export default function NewProductPage() {
                         )}
                     </CardContent>
                 </Card>
-
-                {error && (
-                    <div className="text-sm text-red-500 font-medium">
-                        {error}
-                    </div>
-                )}
 
                 <div className="flex justify-end gap-4">
                     <CancelButton isDirty={isDirty} />
