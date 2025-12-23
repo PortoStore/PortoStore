@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, Eye, EyeOff } from 'lucide-react' // 1. Importar iconos
+import { Loader2, Eye, EyeOff } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -33,15 +34,19 @@ export default function LoginPage() {
 
       if (error) {
         const isInvalid = /invalid login credentials/i.test(error.message || '')
-        setError(isInvalid ? 'Credenciales incorrectas. Por favor, compruébalas.' : (error.message || 'No se pudo iniciar sesión'))
+        const errorMessage = isInvalid ? 'Credenciales incorrectas. Por favor, compruébalas.' : (error.message || 'No se pudo iniciar sesión')
+        setError(errorMessage)
+        toast.error(errorMessage)
         setLoading(false)
         return
       }
 
-      router.refresh()
+      toast.success('Inicio de sesión exitoso')
       router.push('/admin')
+      router.refresh()
     } catch (err) {
       setError('Ocurrió un error inesperado')
+      toast.error('Ocurrió un error inesperado')
       setLoading(false)
     }
   }

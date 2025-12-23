@@ -100,6 +100,7 @@ export default function EditProductPage() {
         setDescription(p.description || "");
         setCategoryId(p.category_id ?? null);
         setUnitId(p.measurement_unit_id ?? null);
+        setIsFeatured(p.is_featured ?? false);
 
         const { data: sizeRows } = await supabase
           .from("product_sizes")
