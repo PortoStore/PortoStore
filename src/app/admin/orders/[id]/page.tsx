@@ -8,28 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 type Sale = { sale_id: number; total_amount: number; status: string | null; payment_type_id: number | null; sale_date: string | null };
 type SaleDetail = { product_id: number | null; size_id: number | null; quantity: number; price_at_sale: number };
-type PaymentRecord = {
-  payment_record_id?: number;
-  sale_id: number;
-  payment_type_id: number;
-  amount: number;
-  currency?: string | null;
-  reference_number?: string | null;
-  origin_name?: string | null;
-  origin_bank?: string | null;
-  amount_received?: number | null;
-  change_given?: number | null;
-  transfer_date?: string | null;
-  record_status?: string | null;
-};
 
 const STATUS_OPTIONS = [
-  { value: "pending", label: "Pendiente" },
   { value: "pending_approval", label: "Pendiente de aprobación" },
   { value: "paid", label: "Pagada" },
-  { value: "dispatched", label: "Despachada" },
-  { value: "in_branch", label: "En sucursal" },
-  { value: "picked_up", label: "Retirada" },
+  { value: "cancelled", label: "Cancelada" },
 ];
 
 export default function AdminOrderDetailPage() {
@@ -42,7 +25,6 @@ export default function AdminOrderDetailPage() {
   const [status, setStatus] = useState<string>("pending");
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [payment, setPayment] = useState<PaymentRecord | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -56,17 +38,11 @@ export default function AdminOrderDetailPage() {
         .from("sale_details")
         .select("product_id,size_id,quantity,price_at_sale")
         .eq("sale_id", id);
-      const { data: pr } = await supabase
-        .from("payment_records")
-        .select("payment_record_id,sale_id,payment_type_id,amount,currency,reference_number,origin_name,origin_bank,amount_received,change_given,transfer_date,record_status")
-        .eq("sale_id", id)
-        .maybeSingle();
       if (saleRow) {
         setSale(saleRow as Sale);
         setStatus((saleRow as Sale).status || "pending");
       }
       setDetails((items as SaleDetail[]) || []);
-      if (pr) setPayment(pr as PaymentRecord);
     })();
   }, [id]);
 
@@ -76,35 +52,36 @@ export default function AdminOrderDetailPage() {
     if (!sale) return;
     setSaving(true);
     setError(null);
+
+    // Stock management
+    const current = sale.status;
+    if (next === "cancelled" && current !== "cancelled") {
+      // Devolver stock
+      await Promise.all(details.map(async (d) => {
+        if (!d.product_id || !d.size_id) return;
+        const { data: curr } = await supabase.from("product_sizes").select("stock").eq("product_id", d.product_id).eq("size_id", d.size_id).single();
+        if (curr) {
+          await supabase.from("product_sizes").update({ stock: (Number(curr.stock) || 0) + Number(d.quantity) }).eq("product_id", d.product_id).eq("size_id", d.size_id);
+        }
+      }));
+    } else if (next !== "cancelled" && current === "cancelled") {
+      // Restar stock nuevamente
+      await Promise.all(details.map(async (d) => {
+        if (!d.product_id || !d.size_id) return;
+        const { data: curr } = await supabase.from("product_sizes").select("stock").eq("product_id", d.product_id).eq("size_id", d.size_id).single();
+        if (curr) {
+          const newStock = Math.max(0, (Number(curr.stock) || 0) - Number(d.quantity));
+          await supabase.from("product_sizes").update({ stock: newStock }).eq("product_id", d.product_id).eq("size_id", d.size_id);
+        }
+      }));
+    }
+
     const { error } = await supabase.from("sales").update({ status: next }).eq("sale_id", sale.sale_id);
     if (error) {
       setError(error.message || "No se pudo actualizar el estado");
     } else {
       setStatus(next);
-    }
-    setSaving(false);
-  }
-
-  async function markAllGood() {
-    // Para transferencia, marcamos como "paid"; para efectivo, también como "paid" inmediatamente
-    await updateStatus("paid");
-  }
-
-  async function savePaymentRecord(next: PaymentRecord) {
-    if (!sale || !sale.payment_type_id) return;
-    setSaving(true);
-    setError(null);
-    const row = { ...next, sale_id: sale.sale_id, payment_type_id: sale.payment_type_id };
-    const { data, error } = await supabase
-      .from("payment_records")
-      .upsert([row], { onConflict: "sale_id" })
-      .select()
-      .maybeSingle();
-    if (error) {
-      setError(error.message || "No se pudo guardar el registro de pago");
-    } else {
-      setPayment(data as PaymentRecord);
-      if (row.record_status === "verified") await updateStatus("paid");
+      setSale({ ...sale, status: next });
     }
     setSaving(false);
   }
@@ -161,74 +138,6 @@ export default function AdminOrderDetailPage() {
             <div className="text-xl font-bold">${totalCalc.toFixed(2)}</div>
           </div>
           {error && <div className="text-sm text-red-500">{error}</div>}
-          <div className="flex gap-3">
-            <Button type="button" onClick={markAllGood} disabled={saving}>Marcar todo correcto</Button>
-            <Button type="button" variant="secondary" onClick={() => router.refresh()} disabled={saving}>Actualizar</Button>
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Registro de Pago</CardTitle>
-          <CardDescription>Registrá comprobantes o montos según el método.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {sale?.payment_type_id === 3 && (
-            <div className="grid gap-3">
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Monto transferido</label>
-                <input className="h-10 rounded-md border bg-transparent px-3 text-sm" type="number" step="0.01" defaultValue={payment?.amount ?? undefined} onChange={(e) => setPayment({ ...(payment || { sale_id: id, payment_type_id: 3, amount: 0 }), amount: Number(e.target.value) || 0 })} />
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">N° comprobante</label>
-                <input className="h-10 rounded-md border bg-transparent px-3 text-sm" defaultValue={payment?.reference_number ?? undefined} onChange={(e) => setPayment({ ...(payment || { sale_id: id, payment_type_id: 3, amount: 0 }), reference_number: e.target.value })} />
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Origen (titular)</label>
-                <input className="h-10 rounded-md border bg-transparent px-3 text-sm" defaultValue={payment?.origin_name ?? undefined} onChange={(e) => setPayment({ ...(payment || { sale_id: id, payment_type_id: 3, amount: 0 }), origin_name: e.target.value })} />
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Banco de origen</label>
-                <input className="h-10 rounded-md border bg-transparent px-3 text-sm" defaultValue={payment?.origin_bank ?? undefined} onChange={(e) => setPayment({ ...(payment || { sale_id: id, payment_type_id: 3, amount: 0 }), origin_bank: e.target.value })} />
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Fecha de transferencia</label>
-                <input className="h-10 rounded-md border bg-transparent px-3 text-sm" type="datetime-local" defaultValue={payment?.transfer_date ?? undefined} onChange={(e) => setPayment({ ...(payment || { sale_id: id, payment_type_id: 3, amount: 0 }), transfer_date: e.target.value })} />
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Estado del registro</label>
-                <select className="h-10 rounded-md border bg-transparent px-3 text-sm" defaultValue={payment?.record_status ?? "recorded"} onChange={(e) => setPayment({ ...(payment || { sale_id: id, payment_type_id: 3, amount: 0 }), record_status: e.target.value })}>
-                  <option value="recorded">Registrado</option>
-                  <option value="verified">Verificado</option>
-                </select>
-              </div>
-              <div className="flex gap-3">
-                <Button type="button" onClick={() => payment && savePaymentRecord(payment)} disabled={saving}>Guardar registro</Button>
-              </div>
-            </div>
-          )}
-          {sale?.payment_type_id === 1 && (
-            <div className="grid gap-3">
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Monto recibido</label>
-                <input className="h-10 rounded-md border bg-transparent px-3 text-sm" type="number" step="0.01" defaultValue={payment?.amount_received ?? undefined} onChange={(e) => setPayment({ ...(payment || { sale_id: id, payment_type_id: 1, amount: 0 }), amount_received: Number(e.target.value) || 0 })} />
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Vuelto</label>
-                <input className="h-10 rounded-md border bg-transparent px-3 text-sm" type="number" step="0.01" defaultValue={payment?.change_given ?? undefined} onChange={(e) => setPayment({ ...(payment || { sale_id: id, payment_type_id: 1, amount: 0 }), change_given: Number(e.target.value) || 0 })} />
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Estado del registro</label>
-                <select className="h-10 rounded-md border bg-transparent px-3 text-sm" defaultValue={payment?.record_status ?? "recorded"} onChange={(e) => setPayment({ ...(payment || { sale_id: id, payment_type_id: 1, amount: 0 }), record_status: e.target.value })}>
-                  <option value="recorded">Registrado</option>
-                  <option value="verified">Verificado</option>
-                </select>
-              </div>
-              <div className="flex gap-3">
-                <Button type="button" onClick={() => payment && savePaymentRecord(payment)} disabled={saving}>Guardar registro</Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,9 +9,7 @@ import { sendOrderEmails } from "@/actions/send-emails";
 
 export default function CheckoutPage() {
   const [shipping, setShipping] = useState<"home" | "store">("home");
-  const [selectedBranch, setSelectedBranch] = useState<string>("");
-  const postalCodeRef = useRef<HTMLInputElement>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer">("transfer");
   const [copied, setCopied] = useState<boolean>(false);
   const [items, setItems] = useState(() => getCartItems());
   const [products, setProducts] = useState<Record<number, { name: string; sku_base?: string; image?: string; prices: { payment_type_id: number; price: number }[] }>>({});
@@ -153,7 +151,7 @@ export default function CheckoutPage() {
 
   async function createOrderInDb(): Promise<number> {
     const paymentId = paymentMethod === "cash" ? 1 : 3;
-    const initialStatus = paymentMethod === "transfer" ? "pending_approval" : "pending";
+    const initialStatus = "pending_approval";
     // Si es WhatsApp (home), removemos el envío del total en la DB para coincidir con el mensaje
     const finalTotal = shipping === "home" ? Math.max(0, subtotalDb - discountAmount) : totalWithDiscount;
     
@@ -174,6 +172,25 @@ export default function CheckoutPage() {
     }));
     const { error: detErr } = await supabase.from("sale_details").insert(details);
     if (detErr) throw detErr;
+
+    // Restar stock
+    await Promise.all(items.map(async (item) => {
+      const { data: currentSize } = await supabase
+        .from("product_sizes")
+        .select("stock")
+        .eq("product_id", item.product_id)
+        .eq("size_id", item.size_id)
+        .single();
+      
+      if (currentSize) {
+        const newStock = Math.max(0, Number(currentSize.stock || 0) - Number(item.qty || 1));
+        await supabase
+          .from("product_sizes")
+          .update({ stock: newStock })
+          .eq("product_id", item.product_id)
+          .eq("size_id", item.size_id);
+      }
+    }));
     
     if (paymentMethod === "transfer") {
       const { error: recErr } = await supabase
@@ -404,7 +421,7 @@ ${paymentMethod === 'transfer' ? `(Referencia: ${transferRef})` : ''}`;
                   </div>
                   <div className="sm:col-span-2">
                     <label className="text-sm font-medium mb-1" htmlFor="postalCode">Código Postal</label>
-                    <Input id="postalCode" placeholder="B1636" ref={postalCodeRef} value={postalCode} onChange={(e) => { setPostalCode(e.target.value); setErrors((prev) => ({ ...prev, postalCode: "" })); }} />
+                    <Input id="postalCode" placeholder="B1636" value={postalCode} onChange={(e) => { setPostalCode(e.target.value); setErrors((prev) => ({ ...prev, postalCode: "" })); }} />
                     {errors.postalCode && <div className="text-red-500 text-xs mt-1">{errors.postalCode}</div>}
                   </div>
                 </div>
@@ -418,7 +435,7 @@ ${paymentMethod === 'transfer' ? `(Referencia: ${transferRef})` : ''}`;
             </div>
           </details>
           
-          <details className="rounded-xl border p-4 group">
+          <details className="rounded-xl border p-4 group" open>
             <summary className="flex cursor-pointer items-center justify-between gap-6 list-none">
               <p className="text-lg font-bold">2. Método de Pago</p>
               <span className="rotate-0 group-open:rotate-180 transition-transform">⌄</span>
@@ -440,6 +457,9 @@ ${paymentMethod === 'transfer' ? `(Referencia: ${transferRef})` : ''}`;
               </fieldset>
               {paymentMethod === "transfer" && (
                 <div className="grid gap-3 rounded-md border p-4">
+                  <div className="bg-yellow-50 text-yellow-800 p-3 rounded-md text-sm border border-yellow-200">
+                    ⚠ Tenés 10 minutos para realizar la transferencia y enviar el comprobante.
+                  </div>
                   <div className="text-sm font-medium">Datos para transferencia</div>
                   <div className="grid sm:grid-cols-2 gap-2 text-sm">
                     <div className="flex items-center gap-2">

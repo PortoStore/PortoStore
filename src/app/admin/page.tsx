@@ -46,6 +46,7 @@ export default async function AdminDashboard() {
     });
     const dayKeys = days.map(d => d.toISOString().slice(0, 10));
     const rows14 = ((salesRows || []) as { total_amount: number; sale_date: string | null; status: string | null; payment_type_id: number | null }[])
+        .filter(r => r.status !== 'cancelled')
         .filter(r => (r.sale_date || '').slice(0, 10) >= dayKeys[0]);
     const revByDay: Record<string, number> = {};
     const ordersByDay: Record<string, number> = {};

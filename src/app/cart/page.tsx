@@ -46,11 +46,11 @@ export default function CartPage() {
 
   useEffect(() => {
     const sizeIds = Array.from(new Set(items.map((i) => i.size_id)));
-    if (sizeIds.length === 0) {
-      setSizeNames({});
-      return;
-    }
     (async () => {
+      if (sizeIds.length === 0) {
+        setSizeNames({});
+        return;
+      }
       const { data } = await supabase
         .from('sizes')
         .select('size_id,name')

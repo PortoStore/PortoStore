@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ShoppingBag, Menu, ChevronDown, User, Loader2 } from "lucide-react";
+import { ShoppingBag, Menu } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader } from "@/components/ui/sheet";
@@ -15,7 +15,6 @@ export default function Navbar() {
   const [categories, setCategories] = useState<string[]>([]);
   const [cartCount, setCartCount] = useState(() => getCartCount());
   const [isScrolled, setIsScrolled] = useState(true);
-  const [isProductsOpen, setIsProductsOpen] = useState(false);
 
   const pathname = usePathname();
   const isHome = pathname === "/";
