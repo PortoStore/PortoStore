@@ -33,7 +33,7 @@ export default function ProductSizeSelector({ sizes, stockBySizeId, productId, p
                   {s.name}
                   {disabled && <X className="size-3" />}
                 </span>
-                {typeof s.value_cm === 'number' && !Number.isNaN(s.value_cm) && (
+                {typeof s.value_cm === 'number' && !Number.isNaN(s.value_cm) && Number.isNaN(Number(s.name)) && (
                   <span className="text-xs text-muted-foreground">({s.value_cm} cm)</span>
                 )}
               </div>

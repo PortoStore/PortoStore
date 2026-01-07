@@ -267,7 +267,8 @@ ${paymentMethod === 'transfer' ? `(Referencia: ${transferRef})` : ''}`;
       setSuccess(true); // Mostramos modal de éxito también
       
       const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(msg)}`;
-      window.open(url, "_blank");
+      // Usamos location.href en lugar de window.open para evitar bloqueo de popups en iOS
+      window.location.href = url;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "No se pudo generar el pedido para WhatsApp";
       setSubmitError(msg);
