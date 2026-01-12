@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react"; 
 import "./globals.css";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
@@ -43,6 +44,7 @@ export default function RootLayout({
           <WhatsAppButton />
           <Toaster />
         </div>
+        <Analytics /> 
       </body>
     </html>
   );
